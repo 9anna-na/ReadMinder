@@ -2,70 +2,117 @@
 
 import { useMemo, useState } from "react";
 
+type FontChoice = "sans" | "serif" | "round";
+
 const stepMeta = [
-  ["連接資料", "Google Sheet"],
-  ["配對欄位", "姓名、日期、狀態"],
-  ["編輯訊息", "套用個人化內容"],
-  ["測試啟用", "確認後開始提醒"],
+  ["說出需求", "想自動注意什麼"],
+  ["連接資料", "文件、表格或日曆"],
+  ["確認規則", "條件與通知對象"],
+  ["測試啟用", "讓提醒開始工作"],
 ];
 
-const defaultMessage = "{{姓名}}您好 👋\n\n提醒您{{日期}}{{時間}}有預約，目前{{狀態}}。\n\n如需改期，直接回覆這則訊息就可以囉！";
+const presets = [
+  { label: "合約到期", text: "每天檢查合約資料夾，如果有文件將在 7 天內到期，就用 LINE 提醒負責人。" },
+  { label: "會議待辦", text: "每週五檢查會議紀錄，如果有尚未完成的待辦，就用 LINE 提醒負責人。" },
+  { label: "客訴追蹤", text: "客服紀錄裡出現超過 24 小時還沒回覆的客訴時，立刻用 LINE 通知客服主管。" },
+];
+
+const sources = [
+  { name: "Google Drive", detail: "資料夾與檔案", mark: "D", color: "blue" },
+  { name: "Google 文件", detail: "合約、紀錄、報告", mark: "Doc", color: "blue" },
+  { name: "Google 試算表", detail: "名單與追蹤資料", mark: "▦", color: "green" },
+  { name: "Google 日曆", detail: "活動與截止日期", mark: "31", color: "yellow" },
+  { name: "上傳檔案", detail: "PDF、Word、CSV", mark: "↑", color: "purple" },
+  { name: "網站或 RSS", detail: "定期檢查網頁變化", mark: "⌁", color: "orange" },
+];
+
+function understandIntent(intent: string) {
+  if (intent.includes("會議") || intent.includes("待辦")) {
+    return {
+      watch: "會議紀錄中的待辦事項",
+      condition: "每週五仍標示為「未完成」",
+      recipient: "待辦事項的負責人",
+      schedule: "每週五下午 4:00",
+      source: "會議紀錄資料夾",
+      message: "嗨小安，本週會議紀錄裡還有 2 件待辦尚未完成：\n\n・確認九月活動場地\n・更新報價單\n\n完成後記得回到文件勾選喔！",
+    };
+  }
+  if (intent.includes("客訴") || intent.includes("客服")) {
+    return {
+      watch: "客服紀錄的回覆狀態",
+      condition: "客訴超過 24 小時未回覆",
+      recipient: "客服主管",
+      schedule: "每小時檢查一次",
+      source: "客服追蹤資料",
+      message: "客服主管您好，有 1 筆客訴已超過 24 小時尚未回覆。\n\n案件：#CS-0821\n客戶：林小姐\n等待時間：26 小時\n\n請盡快協助處理。",
+    };
+  }
+  return {
+    watch: "合約文件中的到期日期",
+    condition: "距離到期日少於 7 天",
+    recipient: "文件中標示的負責人",
+    schedule: "每天上午 9:00",
+    source: "合約資料夾",
+    message: "嗨小安，這份合約將在 7 天後到期：\n\n客戶：森木設計\n合約：年度顧問服務\n到期日：8 月 26 日\n\n要續約的話，記得提前聯絡客戶喔！",
+  };
+}
 
 export default function Home() {
   const [step, setStep] = useState(1);
   const [maxStep, setMaxStep] = useState(1);
-  const [connected, setConnected] = useState(false);
-  const [sheet, setSheet] = useState("八月預約名單");
-  const [message, setMessage] = useState(defaultMessage);
+  const [intent, setIntent] = useState(presets[0].text);
+  const [selectedSources, setSelectedSources] = useState(["Google Drive", "Google 文件"]);
+  const [fontChoice, setFontChoice] = useState<FontChoice>("sans");
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [tested, setTested] = useState(false);
   const [activated, setActivated] = useState(false);
   const [toast, setToast] = useState("");
-
-  const previewMessage = useMemo(() => message
-    .replaceAll("{{姓名}}", "王小明")
-    .replaceAll("{{日期}}", "明天")
-    .replaceAll("{{時間}}", "下午 2:00")
-    .replaceAll("{{狀態}}", "款項尚未完成"), [message]);
+  const scenario = useMemo(() => understandIntent(intent), [intent]);
 
   function goTo(next: number) {
     setStep(next);
     setMaxStep((current) => Math.max(current, next));
+    setTested(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function flash(text: string) {
     setToast(text);
-    window.setTimeout(() => setToast(""), 2400);
+    window.setTimeout(() => setToast(""), 2300);
   }
 
-  function connectGoogle() {
-    setConnected(true);
-    flash("Google 帳號已安全連接");
-  }
-
-  function insertVariable(variable: string) {
-    setMessage((value) => `${value}${value.endsWith(" ") ? "" : " "}${variable}`);
+  function toggleSource(name: string) {
+    setSelectedSources((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell font-${fontChoice}`}>
       {toast && <div className="toast" role="status"><span>✓</span>{toast}</div>}
       <header className="topbar">
-        <div className="brand" aria-label="叮一下首頁">
-          <span className="brand-mark">叮</span><span>叮一下</span><span className="beta">BETA</span>
+        <div className="brand" aria-label="叮一下首頁"><span className="brand-mark">叮</span><span>叮一下</span><span className="beta">BETA</span></div>
+        <div className="header-actions">
+          <div className="appearance-wrap">
+            <button className="appearance-button" onClick={() => setAppearanceOpen((open) => !open)}><span>Aa</span> 字體</button>
+            {appearanceOpen && (
+              <div className="appearance-menu">
+                <small>選擇網站字體</small>
+                <button className={fontChoice === "sans" ? "selected" : ""} onClick={() => setFontChoice("sans")}><b>清晰現代</b><span>適合操作介面</span></button>
+                <button className={fontChoice === "serif" ? "selected serif-sample" : "serif-sample"} onClick={() => setFontChoice("serif")}><b>編輯感</b><span>更像雜誌與文件</span></button>
+                <button className={fontChoice === "round" ? "selected round-sample" : "round-sample"} onClick={() => setFontChoice("round")}><b>柔和圓潤</b><span>親切、輕鬆</span></button>
+              </div>
+            )}
+          </div>
+          <button className="help-button" onClick={() => flash("小幫手會陪你完成每一個步驟")}>需要幫忙？</button>
+          <div className="avatar">喬</div>
         </div>
-        <div className="header-actions"><button className="help-button" onClick={() => flash("小幫手已收到，我們會陪你完成設定")}>需要幫忙？</button><div className="avatar">喬</div></div>
       </header>
 
       <section className="workspace">
+        <div className="workspace-title"><span>建立新的自動提醒</span><small>草稿會自動儲存</small></div>
         <nav className="steps" aria-label="設定步驟">
           {stepMeta.map(([title, description], index) => {
             const number = index + 1;
-            return (
-              <button key={title} className={`step ${step === number ? "active" : ""} ${number < step ? "done" : ""}`} disabled={number > maxStep} onClick={() => setStep(number)}>
-                <span>{number < step ? "✓" : number}</span><div><b>{title}</b><small>{description}</small></div>
-              </button>
-            );
+            return <button key={title} className={`step ${step === number ? "active" : ""} ${number < step ? "done" : ""}`} disabled={number > maxStep} onClick={() => setStep(number)}><span>{number < step ? "✓" : number}</span><div><b>{title}</b><small>{description}</small></div></button>;
           })}
         </nav>
 
@@ -73,83 +120,82 @@ export default function Home() {
           <section className="setup-panel">
             {activated ? (
               <div className="success-screen">
-                <div className="success-mark">✓</div>
-                <div className="eyebrow">設定完成</div>
-                <h1>第一個提醒<br />開始工作了！</h1>
-                <p className="intro">我們會在每天上午 9:00 檢查「{sheet}」。符合條件時，就會從 LINE 傳送個人化提醒。</p>
-                <div className="success-summary"><span>下一次檢查</span><b>明天 上午 9:00</b><small>你可以隨時回來暫停或修改。</small></div>
-                <button className="primary-button" onClick={() => { setActivated(false); setTested(false); goTo(1); }}>再建立一個提醒 <span>＋</span></button>
+                <div className="success-mark">✓</div><div className="eyebrow">提醒已啟用</div>
+                <h1>它會自己留意，<br />有事再找你。</h1>
+                <p className="intro">從現在開始，叮一下會依照你設定的規則檢查「{scenario.source}」。符合條件時，才會用 LINE 通知對的人。</p>
+                <div className="success-summary"><span>正在留意</span><b>{scenario.condition}</b><small>下一次檢查：{scenario.schedule}</small></div>
+                <button className="primary-button" onClick={() => { setActivated(false); setStep(1); setMaxStep(1); }}>再建立一個提醒 <span>＋</span></button>
               </div>
             ) : step === 1 ? (
               <>
-                <div className="eyebrow">STEP 1 OF 4</div>
-                <h1>先把顧客名單<br />交給我們</h1>
-                <p className="intro">選擇一份 Google 試算表。之後有新資料或日期到了，我們就會自動提醒該提醒的人。</p>
-                {!connected ? (
-                  <button className="connect-card" onClick={connectGoogle}>
-                    <span className="sheets-logo" aria-hidden="true"><i /><i /><i /></span>
-                    <span className="connect-copy"><b>連接 Google Sheet</b><small>登入並選擇一份試算表</small></span><span className="arrow">→</span>
-                  </button>
-                ) : (
-                  <div className="sheet-picker">
-                    <div className="connected-row"><span className="mini-google">G</span><div><b>已連接 Joanna 的 Google</b><small>joanna@example.com</small></div><span className="status-pill">已連接</span></div>
-                    <label className="field-label" htmlFor="sheet-select">選擇要使用的試算表</label>
-                    <select id="sheet-select" value={sheet} onChange={(event) => setSheet(event.target.value)}>
-                      <option>八月預約名單</option><option>課程繳費追蹤</option><option>團購訂單 2026</option>
-                    </select>
-                    <div className="sheet-detail"><span className="file-icon">▦</span><div><b>{sheet}</b><small>最後更新：剛剛 · 28 筆資料</small></div><span>✓</span></div>
-                    <button className="primary-button" onClick={() => goTo(2)}>使用這份表格 <span>→</span></button>
-                  </div>
-                )}
-                <div className="trust-row"><span>✓ 只讀取你選擇的試算表</span><span>✓ 隨時可以中斷連接</span></div>
+                <div className="eyebrow">從一句話開始</div>
+                <h1>你想讓什麼事<br />自動來提醒？</h1>
+                <p className="intro">不用先整理格式。直接說資料在哪裡、什麼情況要注意，以及想通知誰。</p>
+                <div className="intent-box">
+                  <textarea aria-label="描述你的自動提醒" value={intent} onChange={(event) => setIntent(event.target.value)} />
+                  <div><span className="magic-dot">✦</span><span>叮一下會幫你整理成規則</span><button onClick={() => goTo(2)} disabled={!intent.trim()}>幫我設定 <span>→</span></button></div>
+                </div>
+                <div className="preset-section"><span>不知道怎麼說？選一個例子</span><div>{presets.map((preset) => <button key={preset.label} className={intent === preset.text ? "selected" : ""} onClick={() => setIntent(preset.text)}>{preset.label}</button>)}</div></div>
               </>
             ) : step === 2 ? (
               <>
                 <div className="eyebrow">STEP 2 OF 4</div>
-                <h1 className="compact-title">告訴我們<br />哪一欄是什麼</h1>
-                <p className="intro compact-intro">我們先猜好了，你只要確認配對正不正確。</p>
-                <div className="mapping-list">
-                  {[["顧客姓名","姓名"],["預約日期","預約日期"],["預約時間","時間"],["目前狀態","付款狀態"]].map(([label, value]) => (
-                    <label className="mapping-row" key={label}><span>{label}</span><select defaultValue={value}><option>{value}</option><option>電話</option><option>LINE ID</option><option>備註</option></select><i>✓</i></label>
-                  ))}
+                <h1 className="compact-title">資料現在<br />放在哪裡？</h1>
+                <p className="intro compact-intro">可以同時選擇不同來源。正式啟用時，我們才會請你登入授權。</p>
+                <div className="source-grid">
+                  {sources.map((source) => {
+                    const selected = selectedSources.includes(source.name);
+                    return <button key={source.name} className={`source-card ${selected ? "selected" : ""}`} onClick={() => toggleSource(source.name)}><span className={`source-mark ${source.color}`}>{source.mark}</span><div><b>{source.name}</b><small>{source.detail}</small></div><i>{selected ? "✓" : "+"}</i></button>;
+                  })}
                 </div>
-                <div className="data-preview"><div><b>資料預覽</b><span>第 2 列</span></div><p><span>王小明</span><span>8/22</span><span>14:00</span><span>未付款</span></p></div>
-                <div className="button-row"><button className="secondary-button" onClick={() => setStep(1)}>← 返回</button><button className="primary-button" onClick={() => goTo(3)}>下一步 <span>→</span></button></div>
+                <div className="privacy-note"><span>◉</span><p><b>你可以只授權特定檔案或資料夾</b><br />其他資料我們看不到，也不會拿來訓練公開模型。</p></div>
+                <div className="button-row"><button className="secondary-button" onClick={() => setStep(1)}>← 返回</button><button className="primary-button" disabled={!selectedSources.length} onClick={() => { flash("已讀懂你的要求"); goTo(3); }}>讓叮一下讀懂資料 <span>✦</span></button></div>
               </>
             ) : step === 3 ? (
               <>
-                <div className="eyebrow">STEP 3 OF 4</div>
-                <h1 className="compact-title">這則提醒<br />想怎麼說？</h1>
-                <p className="intro compact-intro">點選變數，就能自動帶入每一位顧客的資料。</p>
-                <div className="editor">
-                  <div className="variable-bar"><span>插入資料</span>{["{{姓名}}","{{日期}}","{{時間}}","{{狀態}}"].map((item) => <button key={item} onClick={() => insertVariable(item)}>{item.slice(2,-2)}</button>)}</div>
-                  <textarea aria-label="LINE 訊息內容" value={message} onChange={(event) => setMessage(event.target.value)} />
-                  <div className="character-count">{message.length} 字 · LINE 文字訊息</div>
+                <div className="eyebrow">我們這樣理解你的要求</div>
+                <h1 className="compact-title">確認一下，<br />有沒有會錯意？</h1>
+                <div className="rule-builder">
+                  <label><span className="rule-number">1</span><div><small>留意什麼</small><input defaultValue={scenario.watch} /></div></label>
+                  <label><span className="rule-number">2</span><div><small>什麼情況要提醒</small><input defaultValue={scenario.condition} /></div></label>
+                  <label><span className="rule-number">3</span><div><small>通知誰</small><input defaultValue={scenario.recipient} /></div></label>
+                  <label><span className="rule-number">4</span><div><small>多久檢查一次</small><select defaultValue={scenario.schedule}><option>{scenario.schedule}</option><option>每天上午 9:00</option><option>每小時檢查一次</option><option>資料變動時立即檢查</option></select></div></label>
                 </div>
-                <div className="button-row"><button className="secondary-button" onClick={() => setStep(2)}>← 返回</button><button className="primary-button" disabled={!message.trim()} onClick={() => goTo(4)}>預覽並測試 <span>→</span></button></div>
+                <div className="ai-note"><span>✦</span><p><b>還不確定文件格式也沒關係</b><br />連接資料後，我們會先用 3 筆範例測試，找不到欄位時再請你確認。</p></div>
+                <div className="button-row"><button className="secondary-button" onClick={() => setStep(2)}>← 返回</button><button className="primary-button" onClick={() => goTo(4)}>確認並預覽提醒 <span>→</span></button></div>
               </>
             ) : (
               <>
                 <div className="eyebrow">STEP 4 OF 4</div>
-                <h1 className="compact-title">傳給自己<br />試試看</h1>
-                <p className="intro compact-intro">正式啟用前，先確認手機收到的內容和你想的一樣。</p>
-                <div className="test-card"><div className="test-icon">L</div><div><b>傳送測試訊息到 LINE</b><small>收件人：Joanna 的 LINE</small></div>{tested ? <span className="test-success">已送達 ✓</span> : <button onClick={() => { setTested(true); flash("測試訊息已送達 LINE"); }}>傳送測試</button>}</div>
-                <div className="rule-card"><div><span>觸發條件</span><b>預約日期的前一天</b></div><div><span>檢查時間</span><b>每天上午 9:00</b></div><div><span>資料來源</span><b>{sheet}</b></div></div>
-                {!tested && <p className="test-hint">請先傳送一次測試訊息，確認成功後即可啟用。</p>}
-                <div className="button-row"><button className="secondary-button" onClick={() => setStep(3)}>← 修改內容</button><button className="primary-button activate-button" disabled={!tested} onClick={() => setActivated(true)}>啟用自動提醒 <span>✦</span></button></div>
+                <h1 className="compact-title">先傳給自己<br />確認一次</h1>
+                <p className="intro compact-intro">右邊是根據範例資料產生的提醒。正式啟用前，不會傳給其他人。</p>
+                <div className="test-card"><div className="test-icon">L</div><div><b>LINE 測試訊息</b><small>收件人：Joanna 的 LINE</small></div>{tested ? <span className="test-success">已送達 ✓</span> : <button onClick={() => { setTested(true); flash("測試訊息已送達 LINE"); }}>傳送測試</button>}</div>
+                <div className="summary-list"><div><span>資料來源</span><b>{selectedSources.slice(0, 2).join(" ＋ ")}</b></div><div><span>觸發條件</span><b>{scenario.condition}</b></div><div><span>檢查頻率</span><b>{scenario.schedule}</b></div></div>
+                {!tested && <p className="test-hint">請先傳送測試，確認文字與通知對象都正確。</p>}
+                <div className="button-row"><button className="secondary-button" onClick={() => setStep(3)}>← 修改規則</button><button className="primary-button activate-button" disabled={!tested} onClick={() => setActivated(true)}>啟用自動提醒 <span>✦</span></button></div>
               </>
             )}
           </section>
 
           <aside className="preview-panel">
-            <div className="preview-head"><div><span className="live-dot" />訊息預覽</div><span>LINE</span></div>
-            <div className="phone">
-              <div className="phone-bar"><span>9:41</span><b>預約小幫手</b><span>•••</span></div>
-              <div className="chat-date">8 月 22 日 週六</div>
-              <div className="message-row"><div className="bot-avatar">叮</div><div><div className="bot-name">預約小幫手</div><div className="bubble">{previewMessage.split("\n").map((line, index) => <span key={index}>{line || <>&nbsp;</>}<br /></span>)}</div><div className="read-time">已讀　14:02</div></div></div>
-              {tested && <div className="delivery-badge">✓ 測試訊息已送達</div>}
-            </div>
-            <div className="preview-note"><span className="spark">✦</span><p><b>{step === 3 ? "右邊會即時跟著你修改" : "每一則都會自動帶入正確資料"}</b><br />姓名、時間、狀態都能從表格抓取。</p></div>
+            <div className="preview-head"><div><span className="live-dot" />{step === 4 ? "LINE 訊息預覽" : "提醒藍圖"}</div><span>LIVE</span></div>
+            {step === 4 || activated ? (
+              <div className="phone">
+                <div className="phone-bar"><span>9:41</span><b>叮一下</b><span>•••</span></div><div className="chat-date">今天 上午 9:00</div>
+                <div className="message-row"><div className="bot-avatar">叮</div><div><div className="bot-name">叮一下</div><div className="bubble">{scenario.message.split("\n").map((line, index) => <span key={index}>{line || <>&nbsp;</>}<br /></span>)}</div><div className="read-time">已讀　09:01</div></div></div>
+                {tested && <div className="delivery-badge">✓ 測試訊息已送達</div>}
+              </div>
+            ) : (
+              <div className="blueprint">
+                <div className="blueprint-source"><span className="folder-shape">⌑</span><div><small>從這裡讀取</small><b>{step === 1 ? "你的文件或資料" : selectedSources.slice(0, 2).join(" ＋ ")}</b></div></div>
+                <span className="flow-arrow">↓</span>
+                <div className="agent-card"><span>✦</span><div><small>叮一下會持續留意</small><b>{scenario.condition}</b></div><i className="pulse" /></div>
+                <span className="flow-arrow">↓</span>
+                <div className="blueprint-source line-source"><span>L</span><div><small>有狀況才通知</small><b>{scenario.recipient}</b></div></div>
+                <div className="blueprint-caption"><b>你不用一直打開資料檢查。</b><br />沒發生事情時，叮一下會保持安靜。</div>
+              </div>
+            )}
+            <div className="preview-note"><span className="spark">✦</span><p><b>不限試算表，也不要求固定格式</b><br />文件內容、日期、狀態與文字變化都能成為提醒條件。</p></div>
           </aside>
         </div>
       </section>
