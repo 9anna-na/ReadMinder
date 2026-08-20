@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { analyzeReminderText, ReminderAnalysis, sampleReminderDocument } from "./reminder-analysis";
 
 type Locale = "zh" | "en";
 type Option = { label: string; icon: string; note?: string };
@@ -26,9 +27,13 @@ const content = {
     sourcePrefix: "資料來源：", chooseData: "選擇文件或資料", fileTypes: "PDF、CSV、Excel、Word、TXT、JSON",
     orLink: "或貼上連結", useLink: "使用連結", later: "稍後再提供", laterValue: "稍後連接資料",
     ready: "你的提醒準備好了", readyCopy: "從現在開始，重要變化會主動來找你。",
-    summary: ["主題", "資料", "格式", "傳送到"], activate: "連接帳號並啟用", restart: "再建立一個提醒",
+    summary: ["主題", "資料", "格式", "傳送到"], activate: "儲存這個提醒", restart: "再建立一個提醒",
     placeholder: "例如：合約快到期、待辦還沒完成……", send: "送出", user: "你",
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
+    sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
+    analysisTitle: "Remind 讀到這些期限線索", datesFound: "辨識到的日期", keywordsFound: "期限關鍵字",
+    noDate: "目前沒有找到明確日期，你仍可以繼續建立提醒。", limited: "這個格式目前先讀取檔名；TXT、CSV、JSON 可分析完整內容。",
+    remindBefore: "提前多久提醒", days: "天", saved: "已儲存在這台裝置 ✓", savedNote: "這筆提醒已保存在瀏覽器；下一階段會接上帳號、排程與真正通知。",
   },
   en: {
     lang: "中文", langHref: "/", homeLabel: "Remind home", login: "Log in",
@@ -50,9 +55,13 @@ const content = {
     sourcePrefix: "Source: ", chooseData: "Choose a document or data file", fileTypes: "PDF, CSV, Excel, Word, TXT, JSON",
     orLink: "or paste a link", useLink: "Use link", later: "I'll add it later", laterValue: "Connect data later",
     ready: "Your reminder is ready", readyCopy: "You're all set. Important changes will now come to you.",
-    summary: ["TOPIC", "SOURCE", "FORMAT", "DELIVERY"], activate: "Connect account & activate", restart: "Build another reminder",
+    summary: ["TOPIC", "SOURCE", "FORMAT", "DELIVERY"], activate: "Save this reminder", restart: "Build another reminder",
     placeholder: "Type your message...", send: "Send", user: "You",
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
+    sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
+    analysisTitle: "Remind found these deadline signals", datesFound: "Dates found", keywordsFound: "Deadline keywords",
+    noDate: "No explicit date was found. You can still continue building the reminder.", limited: "This format currently uses the filename only. TXT, CSV and JSON support full content analysis.",
+    remindBefore: "Remind me before", days: "days", saved: "Saved on this device ✓", savedNote: "This reminder is stored in your browser. Accounts, scheduling and live delivery come next.",
   },
 } as const;
 
@@ -79,14 +88,42 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
   const [topic, setTopic] = useState(""); const [draft, setDraft] = useState("");
   const [source, setSource] = useState(""); const [link, setLink] = useState("");
   const [format, setFormat] = useState(""); const [delivery, setDelivery] = useState("");
+  const [analysis, setAnalysis] = useState<ReminderAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [leadDays, setLeadDays] = useState(7);
+  const [saved, setSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const progress = step >= 5 ? 100 : (step - 1) * 25;
 
   function start() { setScreen("builder"); window.scrollTo({ top: 0 }); }
   function submitTopic(event: FormEvent) { event.preventDefault(); if (draft.trim()) { setTopic(draft.trim()); setStep(2); } }
-  function useLink() { if (link.trim()) { setSource(link.trim()); setStep(3); } }
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) { const file = event.target.files?.[0]; if (file) { setSource(file.name); setStep(3); } }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); }
+  function useLink() { if (link.trim()) { setSource(link.trim()); setAnalysis(analyzeReminderText(link.trim(), link.trim(), true)); setStep(3); } }
+  async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAnalyzing(true);
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    const readable = ["txt", "csv", "json", "md"].includes(extension);
+    const text = readable ? await file.text() : "";
+    setSource(file.name);
+    setAnalysis(analyzeReminderText(text, file.name, !readable));
+    setAnalyzing(false);
+    setStep(3);
+  }
+  function useSample() {
+    const fileName = locale === "zh" ? "年度顧問合約.csv" : "annual-consulting-contract.csv";
+    const sample = sampleReminderDocument(locale);
+    setSource(fileName);
+    setAnalysis(analyzeReminderText(sample, fileName));
+    setStep(3);
+  }
+  function saveReminder() {
+    const reminder = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), topic, source, format, delivery, leadDays, analysis };
+    const current = JSON.parse(window.localStorage.getItem("remind.reminders") ?? "[]");
+    window.localStorage.setItem("remind.reminders", JSON.stringify([...current, reminder]));
+    setSaved(true);
+  }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setLeadDays(7); setSaved(false); }
 
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
@@ -114,10 +151,25 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
         {topic && <User text={topic} label={t.user} />}{step >= 2 && <Bot text={t.sourceQuestion} />}{source && <User text={`${t.sourcePrefix}${source}`} label={t.user} />}
         {step >= 3 && <Bot text={t.formatQuestion} />}{format && <User text={format} label={t.user} />}{step >= 4 && <Bot text={t.deliveryQuestion} />}{delivery && <User text={delivery} label={t.user} />}
 
-        {step === 2 && <div className="f-source-picker"><input ref={fileRef} className="f-hidden" type="file" accept=".pdf,.csv,.xlsx,.xls,.doc,.docx,.txt,.json" onChange={chooseFile} /><button className="f-upload" onClick={() => fileRef.current?.click()}><span>↑</span><b>{t.chooseData}</b><small>{t.fileTypes}</small></button><div className="f-or"><span>{t.orLink}</span></div><div className="f-link"><input aria-label={t.orLink} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://docs.google.com/..." /><button disabled={!link.trim()} onClick={useLink}>{t.useLink} →</button></div><button className="f-skip" onClick={() => { setSource(t.laterValue); setStep(3); }}>{t.later}</button></div>}
-        {step === 3 && <div className="f-choices">{formats[locale].map((item) => <button key={item.label} onClick={() => { setFormat(item.label); window.setTimeout(() => setStep(4), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>→</em></button>)}</div>}
+        {step === 2 && <div className="f-source-picker">
+          <input ref={fileRef} className="f-hidden" type="file" accept=".pdf,.csv,.xlsx,.xls,.doc,.docx,.txt,.json,.md" onChange={chooseFile} />
+          <button className="f-upload" disabled={analyzing} onClick={() => fileRef.current?.click()}><span>{analyzing ? "…" : "↑"}</span><b>{analyzing ? "Analyzing…" : t.chooseData}</b><small>{t.fileTypes}</small></button>
+          <p className="f-local-note">◎ {t.localOnly}</p>
+          <button className="f-sample" onClick={useSample}>✦ {t.sample} →</button>
+          <div className="f-or"><span>{t.orLink}</span></div><div className="f-link"><input aria-label={t.orLink} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://docs.google.com/..." /><button disabled={!link.trim()} onClick={useLink}>{t.useLink} →</button></div><button className="f-skip" onClick={() => { setSource(t.laterValue); setAnalysis(null); setStep(3); }}>{t.later}</button>
+        </div>}
+        {step === 3 && <>
+          {analysis && <div className="f-analysis-card">
+            <div className="f-analysis-head"><span>✦</span><div><small>DOCUMENT ANALYSIS</small><h3>{t.analysisTitle}</h3></div></div>
+            {analysis.limited && <p className="f-analysis-warning">{t.limited}</p>}
+            {analysis.signals.length ? <div className="f-signal-list"><span>{t.datesFound}</span>{analysis.signals.slice(0, 3).map((signal) => <div key={`${signal.date}-${signal.rawDate}`}><b>{signal.date}</b><p>{signal.context}</p></div>)}</div> : <p className="f-analysis-empty">{t.noDate}</p>}
+            {!!analysis.keywords.length && <div className="f-keywords"><span>{t.keywordsFound}</span><div>{analysis.keywords.map((keyword) => <b key={keyword}>{keyword}</b>)}</div></div>}
+            <label className="f-lead-days"><span>{t.remindBefore}</span><select value={leadDays} onChange={(event) => setLeadDays(Number(event.target.value))}><option value={1}>1 {t.days}</option><option value={3}>3 {t.days}</option><option value={7}>7 {t.days}</option><option value={14}>14 {t.days}</option><option value={30}>30 {t.days}</option></select></label>
+          </div>}
+          <div className="f-choices">{formats[locale].map((item) => <button key={item.label} onClick={() => { setFormat(item.label); window.setTimeout(() => setStep(4), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>→</em></button>)}</div>
+        </>}
         {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><b>{item.label}</b><em>→</em></button>)}</div>}
-        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div><div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><button className="f-activate" onClick={() => window.alert(t.prototype)}>{t.activate} <span>→</span></button><button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
+        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved} onClick={saveReminder}>{saved ? t.saved : t.activate} <span>{saved ? "" : "→"}</span></button>{saved && <p className="f-saved-note">{t.savedNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
       </div>
       {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input autoFocus aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
     </section><Footer />
