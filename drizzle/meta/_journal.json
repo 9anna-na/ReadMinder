@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787211968259,
+      "tag": "0000_aberrant_hydra",
+      "breakpoints": true
+    }
+  ]
 }

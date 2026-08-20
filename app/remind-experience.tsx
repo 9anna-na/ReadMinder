@@ -5,7 +5,7 @@ import { DocumentReadError, extractDocumentText } from "./file-readers";
 import { analyzeReminderText, ReminderAnalysis, sampleReminderDocument } from "./reminder-analysis";
 
 type Locale = "zh" | "en";
-type Option = { label: string; icon: string; note?: string };
+type Option = { label: string; icon: string; note?: string; available?: boolean };
 
 const content = {
   zh: {
@@ -28,7 +28,7 @@ const content = {
     sourcePrefix: "資料來源：", chooseData: "選擇文件或資料", fileTypes: "PDF、DOCX、Excel、CSV、TXT、JSON（最大 10 MB）",
     orLink: "或貼上連結", useLink: "使用連結", later: "稍後再提供", laterValue: "稍後連接資料",
     ready: "你的提醒準備好了", readyCopy: "從現在開始，重要變化會主動來找你。",
-    summary: ["主題", "資料", "格式", "傳送到"], activate: "儲存這個提醒", restart: "再建立一個提醒",
+    summary: ["主題", "資料", "格式", "傳送到"], activate: "儲存並設定 Email", restart: "再建立一個提醒",
     placeholder: "例如：合約快到期、待辦還沒完成……", send: "送出", user: "你",
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
     sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
@@ -38,7 +38,9 @@ const content = {
       "file-too-large": "檔案超過 10 MB，請縮小後再試一次。", unsupported: "目前不支援這個格式；舊版 .doc 請先另存成 .docx。",
       empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
     },
-    remindBefore: "提前多久提醒", days: "天", saved: "已儲存在這台裝置 ✓", savedNote: "這筆提醒已保存在瀏覽器；下一階段會接上帳號、排程與真正通知。",
+    remindBefore: "提前多久提醒", days: "天", recipientEmail: "提醒要寄到哪個 Email？", emailPlaceholder: "you@example.com",
+    emailConsent: "按下儲存即同意 ReadMinder 僅將此 Email 用於這筆提醒。", saving: "正在安全儲存…", saved: "已儲存到雲端 ✓",
+    savedNote: "提醒規則已安全保存。Email 寄送會在下一階段連接寄信服務後啟用。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
   },
   en: {
     lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in",
@@ -60,7 +62,7 @@ const content = {
     sourcePrefix: "Source: ", chooseData: "Choose a document or data file", fileTypes: "PDF, DOCX, Excel, CSV, TXT, JSON (10 MB max)",
     orLink: "or paste a link", useLink: "Use link", later: "I'll add it later", laterValue: "Connect data later",
     ready: "Your reminder is ready", readyCopy: "You're all set. Important changes will now come to you.",
-    summary: ["TOPIC", "SOURCE", "FORMAT", "DELIVERY"], activate: "Save this reminder", restart: "Build another reminder",
+    summary: ["TOPIC", "SOURCE", "FORMAT", "DELIVERY"], activate: "Save and set up email", restart: "Build another reminder",
     placeholder: "Type your message...", send: "Send", user: "You",
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
     sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
@@ -70,7 +72,9 @@ const content = {
       "file-too-large": "This file is over 10 MB. Please reduce its size and try again.", unsupported: "This format is not supported yet. Save legacy .doc files as .docx and try again.",
       empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
     },
-    remindBefore: "Remind me before", days: "days", saved: "Saved on this device ✓", savedNote: "This reminder is stored in your browser. Accounts, scheduling and live delivery come next.",
+    remindBefore: "Remind me before", days: "days", recipientEmail: "Which email should receive the reminder?", emailPlaceholder: "you@example.com",
+    emailConsent: "By saving, you agree that ReadMinder may use this email only for this reminder.", saving: "Saving securely…", saved: "Saved to the cloud ✓",
+    savedNote: "Your reminder rule is safely stored. Email delivery will activate after the sending service is connected.", saveError: "We couldn't save this reminder. Check that you're signed in and try again.",
   },
 } as const;
 
@@ -86,8 +90,8 @@ const formats: Record<Locale, Option[]> = {
 };
 
 const deliveries: Record<Locale, Option[]> = {
-  zh: [{ label: "LINE", icon: "L" }, { label: "Email", icon: "@" }, { label: "Push 通知", icon: "◉" }, { label: "Slack", icon: "#" }, { label: "Google 日曆", icon: "31" }],
-  en: [{ label: "LINE", icon: "L" }, { label: "Email", icon: "@" }, { label: "Push notification", icon: "◉" }, { label: "Slack", icon: "#" }, { label: "Google Calendar", icon: "31" }],
+  zh: [{ label: "LINE", icon: "L", note: "即將開放" }, { label: "Email", icon: "@", note: "目前可設定", available: true }, { label: "Push 通知", icon: "◉", note: "即將開放" }, { label: "Slack", icon: "#", note: "即將開放" }, { label: "Google 日曆", icon: "31", note: "即將開放" }],
+  en: [{ label: "LINE", icon: "L", note: "Coming soon" }, { label: "Email", icon: "@", note: "Available now", available: true }, { label: "Push notification", icon: "◉", note: "Coming soon" }, { label: "Slack", icon: "#", note: "Coming soon" }, { label: "Google Calendar", icon: "31", note: "Coming soon" }],
 };
 
 export default function ReadMinderExperience({ locale = "zh" }: { locale?: Locale }) {
@@ -101,7 +105,10 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
   const [leadDays, setLeadDays] = useState(7);
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const progress = step >= 5 ? 100 : (step - 1) * 25;
 
@@ -133,13 +140,25 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
     setAnalysis(analyzeReminderText(sample, fileName));
     setStep(3);
   }
-  function saveReminder() {
-    const reminder = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), topic, source, format, delivery, leadDays, analysis };
-    const current = JSON.parse(window.localStorage.getItem("readminder.reminders") ?? window.localStorage.getItem("remind.reminders") ?? "[]");
-    window.localStorage.setItem("readminder.reminders", JSON.stringify([...current, reminder]));
-    setSaved(true);
+  async function saveReminder() {
+    if (!recipientEmail.trim()) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const response = await fetch("/api/reminders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ topic, source, format, delivery, leadDays, recipientEmail, primaryDate: analysis?.primaryDate ?? "", analysis }),
+      });
+      if (!response.ok) throw new Error("save failed");
+      setSaved(true);
+    } catch {
+      setSaveError(t.saveError);
+    } finally {
+      setSaving(false);
+    }
   }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setSaved(false); }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setRecipientEmail(""); setSaved(false); setSaving(false); setSaveError(""); }
 
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
@@ -185,8 +204,8 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
           </div>}
           <div className="f-choices">{formats[locale].map((item) => <button key={item.label} onClick={() => { setFormat(item.label); window.setTimeout(() => setStep(4), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>→</em></button>)}</div>
         </>}
-        {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><b>{item.label}</b><em>→</em></button>)}</div>}
-        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved} onClick={saveReminder}>{saved ? t.saved : t.activate} <span>{saved ? "" : "→"}</span></button>{saved && <p className="f-saved-note">{t.savedNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
+        {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} disabled={!item.available} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>{item.available ? "→" : "○"}</em></button>)}</div>}
+        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small></label><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !recipientEmail.includes("@") || !recipientEmail.includes(".")} onClick={saveReminder}>{saved ? t.saved : saving ? t.saving : t.activate} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <p className="f-saved-note">{t.savedNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
       </div>
       {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
     </section><Footer />

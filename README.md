@@ -14,7 +14,8 @@ Most reminder tools expect users to manually enter every date. ReadMinder explor
 - Date and deadline-keyword extraction
 - Relevant source-context preview
 - Configurable lead time: 1, 3, 7, 14, or 30 days
-- Reminder rules saved in browser storage
+- Authenticated reminder rules saved to a user-owned cloud database
+- Email recipient setup with explicit consent
 - Sample contract for trying the complete flow without uploading a file
 
 Document analysis currently runs in the browser, so supported file contents are not uploaded to an external service.
@@ -24,14 +25,14 @@ Document analysis currently runs in the browser, so supported file contents are 
 - Scanned/image-only PDFs need OCR and are not readable yet
 - Password-protected PDFs and legacy `.doc` files are not supported
 - Large documents are capped at 10 MB and 250,000 extracted characters for browser performance
-- Saved reminders are device-local
-- Login, scheduled checks, and live LINE/email delivery are not connected yet
+- Email sending and scheduled checks are not connected to a delivery provider yet
+- LINE, Slack, push, and calendar delivery are marked as coming soon
 
 ## Roadmap
 
-1. Add accounts and durable reminder storage
-2. Add a scheduler and reminder activity log
-3. Connect LINE and email delivery
+1. Connect an email delivery provider and enable scheduled checks
+2. Add a reminder dashboard and activity log
+3. Connect LINE delivery
 4. Add OCR for scanned documents
 5. Connect Google Drive and monitor source changes
 
