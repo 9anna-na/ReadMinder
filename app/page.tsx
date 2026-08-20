@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import FigmaExperience from "./figma-experience";
+
+export default function Home() {
+  return <FigmaExperience />;
+}
 
 type FontChoice = "sans" | "serif" | "round";
 
@@ -57,7 +62,7 @@ function understandIntent(intent: string) {
   };
 }
 
-export default function Home() {
+function LegacyHome() {
   const [step, setStep] = useState(1);
   const [maxStep, setMaxStep] = useState(1);
   const [intent, setIntent] = useState(presets[0].text);
