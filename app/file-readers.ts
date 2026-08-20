@@ -1,8 +1,8 @@
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_TEXT_CHARACTERS = 250_000;
 const MAX_PDF_PAGES = 80;
+const PDF_MODULE_URL = "/vendor/pdfjs/pdf.min.mjs";
+const PDF_WORKER_URL = "/vendor/pdfjs/pdf.worker.min.mjs";
 
 export type ExtractedDocument = {
   text: string;
@@ -35,7 +35,9 @@ function finish(text: string, format: string, limited = false): ExtractedDocumen
 }
 
 async function readPdf(file: File) {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfModuleUrl = new URL(PDF_MODULE_URL, globalThis.location.href).href;
+  const pdfWorkerUrl = new URL(PDF_WORKER_URL, globalThis.location.href).href;
+  const pdfjs = await import(/* @vite-ignore */ pdfModuleUrl) as typeof import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
   try {

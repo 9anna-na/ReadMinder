@@ -48,12 +48,17 @@ test("server-renders the matching English experience", async () => {
 });
 
 test("keeps document parsing local and supports the advertised formats", async () => {
-  const [reader, experience] = await Promise.all([
+  const [reader, experience, pdfModule, pdfWorker] = await Promise.all([
     readFile(new URL("../app/file-readers.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/remind-experience.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../public/vendor/pdfjs/pdf.min.mjs", import.meta.url)),
+    readFile(new URL("../public/vendor/pdfjs/pdf.worker.min.mjs", import.meta.url)),
   ]);
 
-  assert.match(reader, /import\("pdfjs-dist"\)/);
+  assert.match(reader, /PDF_MODULE_URL = "\/vendor\/pdfjs\/pdf\.min\.mjs"/);
+  assert.match(reader, /PDF_WORKER_URL = "\/vendor\/pdfjs\/pdf\.worker\.min\.mjs"/);
+  assert.ok(pdfModule.byteLength > 100_000);
+  assert.ok(pdfWorker.byteLength > 100_000);
   assert.match(reader, /import\("mammoth"\)/);
   assert.match(reader, /import\("xlsx"\)/);
   assert.match(reader, /MAX_FILE_BYTES = 10 \* 1024 \* 1024/);
