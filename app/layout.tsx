@@ -3,8 +3,8 @@ import { headers } from "next/headers";
 import "./globals.css";
 import "./figma.css";
 
-const title = "叮一下｜你說一句，資料會自己留意";
-const description = "針對文件、表格、日曆或網站資料，用一句話建立自動提醒。";
+const title = "Remind｜重要的事，不再錯過";
+const description = "針對文件、表格、日曆或網站資料，用幾個簡單問題建立自動提醒。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

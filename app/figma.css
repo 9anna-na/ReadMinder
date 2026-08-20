@@ -1,11 +1,11 @@
 :root { --f-pink:#f3d7d0; --f-pink-dark:#e8b9b0; --f-navy:#1f3552; --f-red:#cb4b39; --f-cream:#fffaf2; --f-white:#fffdf8; }
-.f-landing,.f-builder { color:var(--f-navy); background:var(--f-pink); font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; }
+.f-landing,.f-builder { color:var(--f-navy); background:var(--f-pink); font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Yuanti TC","PingFang TC","Microsoft JhengHei",sans-serif; }
 .f-landing button,.f-landing input,.f-builder button,.f-builder input { font:inherit; }
 .f-landing { min-height:100vh; overflow:hidden; padding:25px clamp(24px,5vw,76px) 34px; }
 .f-landing-header { max-width:1350px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
 .f-brand { display:flex; align-items:center; gap:13px; color:var(--f-navy); text-decoration:none; font:700 clamp(25px,2.2vw,36px)/1 Georgia,"Noto Serif TC",serif; }
 .f-brand-mark { width:49px; height:49px; flex:0 0 49px; display:grid; place-items:center; color:var(--f-cream); background:var(--f-navy); border:2px solid var(--f-navy); font:700 24px/1 "Noto Serif TC",Georgia,serif; box-shadow:4px 4px 0 var(--f-red); }
-.f-header-cta { border:2px solid var(--f-navy); background:transparent; padding:11px 16px; color:var(--f-navy); font-size:12px; font-weight:800; cursor:pointer; box-shadow:3px 3px 0 var(--f-navy); }
+.f-header-cta { border:2px solid var(--f-navy); background:transparent; padding:12px 19px; color:var(--f-navy); font-size:15px; font-weight:800; cursor:pointer; box-shadow:3px 3px 0 var(--f-navy); }
 .f-header-cta span { color:var(--f-red); margin-left:7px; }
 .f-stitch { max-width:1350px; margin:23px auto 0; display:grid; grid-template-columns:repeat(7,1fr); gap:13px; }
 .f-stitch span { height:9px; background:var(--f-navy); box-shadow:5px 0 0 var(--f-red); }
@@ -14,7 +14,7 @@
 .f-hero h1 { margin:27px 0 20px; color:var(--f-red); font:700 clamp(62px,8vw,114px)/.94 "Noto Serif TC","Songti TC",Georgia,serif; letter-spacing:-.075em; }
 .f-hero h1 em { color:var(--f-navy); font-style:normal; position:relative; display:inline-block; }
 .f-hero h1 em:after { content:""; position:absolute; left:1%; right:-2%; bottom:-5px; height:8px; background:var(--f-red); transform:rotate(-1deg); }
-.f-hero p { margin:8px 0 27px; color:#34465c; font-size:clamp(14px,1.3vw,18px); line-height:1.85; font-weight:600; }
+.f-hero p { margin:8px 0 27px; color:#34465c; font-size:clamp(17px,1.45vw,21px); line-height:1.8; font-weight:600; }
 .f-main-cta { border:2px solid var(--f-navy); background:var(--f-navy); color:var(--f-cream); padding:17px 23px; min-width:215px; font-weight:900; cursor:pointer; box-shadow:6px 6px 0 var(--f-red); transition:transform .18s ease,box-shadow .18s ease; }
 .f-main-cta:hover { transform:translate(2px,2px); box-shadow:4px 4px 0 var(--f-red); }
 .f-main-cta span { color:#f1a495; margin-left:18px; }
@@ -24,7 +24,7 @@
 .f-features article>span { color:var(--f-red); font:italic 700 12px/1 Georgia,serif; }
 .f-features article>i { position:absolute; right:20px; top:18px; width:31px; height:31px; display:grid; place-items:center; border:1.5px solid var(--f-navy); color:var(--f-red); font-style:normal; font-weight:900; }
 .f-features h2 { margin:20px 0 9px; font:700 24px/1.2 "Noto Serif TC","Songti TC",Georgia,serif; letter-spacing:-.03em; }
-.f-features p { margin:0; color:#5f5d5a; font-size:12px; line-height:1.7; }
+.f-features p { margin:0; color:#5f5d5a; font-size:16px; line-height:1.65; }
 .f-footer { max-width:1120px; margin:27px auto 0; padding-top:17px; border-top:1px solid rgba(31,53,82,.35); display:flex; justify-content:space-between; font:italic 14px/1 Georgia,serif; }
 .f-footer i { color:var(--f-red); }
 
@@ -72,4 +72,46 @@
 @media (max-width:700px) {
   .f-landing{padding:18px 16px 28px}.f-header-cta{display:none}.f-brand-mark{width:42px;height:42px;flex-basis:42px}.f-stitch{gap:8px;margin-top:19px}.f-stitch span{height:7px}.f-hero{padding:52px 0 48px}.f-hero h1{font-size:59px}.f-desktop-break{display:none}.f-features{grid-template-columns:1fr;gap:16px}.f-features article{min-height:0}.f-footer{margin-top:26px}.f-footer span{font-size:12px}
   .f-builder{padding:17px 12px 28px}.f-builder-header{margin-bottom:19px}.f-brand-copy b{font-size:25px}.f-chat-card{box-shadow:6px 6px 0 var(--f-navy)}.f-progress{padding:17px}.f-conversation{padding:22px 16px 25px}.f-message p{font-size:11px}.f-source-picker,.f-choices,.f-ready{margin-left:0}.f-choices{grid-template-columns:1fr}.f-composer{grid-template-columns:1fr}.f-composer button{min-height:43px}.f-link{grid-template-columns:1fr}.f-link button{min-height:42px}.f-ready{padding:19px}.f-ready h2{font-size:26px}
+}
+
+/* Remind v4: larger type, rounded Chinese, and Figma-matched proportions */
+.f-landing,.f-builder { font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Yuanti TC","PingFang TC","Microsoft JhengHei",sans-serif; font-size:16px; }
+.f-en { font-family:"Avenir Next","Trebuchet MS",Arial,sans-serif; }
+.f-header-actions,.f-builder-actions { display:flex; align-items:center; gap:14px; }
+.f-header-actions>a,.f-builder-actions>a { color:var(--f-navy); font-size:14px; font-weight:800; text-decoration:none; border-bottom:2px solid var(--f-red); }
+.f-header-cta { padding:12px 19px; font-size:15px; }
+.f-stitch { grid-template-columns:repeat(14,1fr); gap:12px; }
+.f-stitch span { height:7px; }
+.f-kicker { border-radius:5px; font-size:13px; letter-spacing:.1em; }
+.f-hero { padding:55px 18px 58px; }
+.f-hero h1 { color:#241f20; font:700 clamp(68px,7.2vw,104px)/.95 Georgia,"Noto Serif TC","Songti TC",serif; letter-spacing:-.055em; }
+.f-zh .f-hero h1 { font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Yuanti TC","PingFang TC",sans-serif; font-weight:800; letter-spacing:-.07em; }
+.f-hero p { max-width:680px; font-size:clamp(17px,1.45vw,21px); line-height:1.75; }
+.f-cta-row { display:flex; align-items:center; gap:24px; }
+.f-main-cta { min-width:235px; padding:18px 26px; font-size:16px; }
+.f-hero small { margin:0; color:#5e5553; font-size:14px; }
+.f-features h2 { font-size:26px; }
+.f-zh .f-features h2 { font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Yuanti TC","PingFang TC",sans-serif; font-weight:800; }
+.f-features p { font-size:16px; line-height:1.65; }
+.f-brand-copy small { font:700 13px/1.2 ui-rounded,"SF Pro Rounded","Yuanti TC",sans-serif; }
+.f-setup-tag { border-radius:4px; padding:8px 13px 7px; font-size:12px; }
+.f-builder-actions>button { border:0; background:transparent; color:var(--f-navy); font-size:14px; font-weight:900; cursor:pointer; }
+.f-progress>div { font:700 14px/1.2 Georgia,serif; letter-spacing:.04em; }
+.f-conversation { min-height:420px; padding:35px 28px 34px; gap:18px; }
+.f-message>span { width:40px; height:40px; flex-basis:40px; font:700 16px/1 Georgia,serif; }
+.f-message p { max-width:555px; padding:15px 19px; color:#2f3440; font-size:17px; line-height:1.55; font-weight:600; }
+.f-user>span { font-family:inherit; font-size:12px; }
+.f-composer input,.f-link input { padding:15px 17px; font-size:16px; }
+.f-composer button,.f-link button { padding:12px 20px; font-size:16px; }
+.f-upload>span { width:38px; height:38px; font-size:20px; }
+.f-upload b { font-size:17px; }.f-upload small { font-size:13px; }
+.f-or { margin:16px 0; font-size:13px; }.f-skip { margin-top:15px; font-size:13px; }
+.f-choices i { width:42px; height:42px; }.f-choices b { font-size:16px; }.f-choices small { font-size:13px; }
+.f-ready>div>small { font-size:12px; }.f-ready h2 { font-size:32px; }.f-zh .f-ready h2 { font-family:ui-rounded,"SF Pro Rounded","Yuanti TC",sans-serif; }.f-ready>div>p { font-size:15px; }
+.f-summary span { font-size:12px; }.f-summary b { font-size:15px; line-height:1.45; }
+.f-activate { padding:15px; font-size:16px; }.f-restart { margin-top:16px; font-size:14px; }
+
+@media (max-width:700px) {
+  .f-header-cta{display:block;padding:9px 11px;font-size:13px}.f-header-actions{gap:9px}.f-brand{font-size:26px}.f-stitch{gap:7px}.f-stitch span{height:6px}.f-hero{padding:48px 0 44px}.f-hero h1{font-size:56px}.f-hero p{font-size:17px}.f-cta-row{flex-direction:column;gap:18px}.f-features p{font-size:15px}
+  .f-brand-copy small{font-size:11px}.f-builder-actions>a,.f-builder-actions>button{font-size:12px}.f-setup-tag{display:none}.f-message p{font-size:16px}.f-composer button{min-height:48px}.f-link button{min-height:46px}.f-ready h2{font-size:28px}
 }

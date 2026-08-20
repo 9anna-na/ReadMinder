@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import FigmaExperience from "./figma-experience";
+import RemindExperience from "./remind-experience";
 
 export default function Home() {
-  return <FigmaExperience />;
+  return <RemindExperience locale="zh" />;
 }
 
 type FontChoice = "sans" | "serif" | "round";
