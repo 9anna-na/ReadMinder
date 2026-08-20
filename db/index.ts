@@ -26,6 +26,9 @@ export async function ensureReminderSchema() {
       delivery TEXT NOT NULL,
       lead_days INTEGER NOT NULL,
       primary_date TEXT NOT NULL DEFAULT '',
+      locale TEXT NOT NULL DEFAULT 'zh',
+      scheduled_for TEXT NOT NULL DEFAULT '',
+      scheduled_email_id TEXT NOT NULL DEFAULT '',
       analysis_json TEXT NOT NULL DEFAULT '{}',
       status TEXT NOT NULL DEFAULT 'draft',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,4 +37,14 @@ export async function ensureReminderSchema() {
     env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_reminders_owner_created ON reminders(owner_id, created_at)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_reminders_status_date ON reminders(status, primary_date)"),
   ]);
+
+  const columns = await env.DB.prepare("PRAGMA table_info(reminders)").all<{ name: string }>();
+  const columnNames = new Set(columns.results.map((column) => column.name));
+  const additions: D1PreparedStatement[] = [];
+  if (!columnNames.has("locale")) additions.push(env.DB.prepare("ALTER TABLE reminders ADD COLUMN locale TEXT NOT NULL DEFAULT 'zh'"));
+  if (!columnNames.has("scheduled_for")) additions.push(env.DB.prepare("ALTER TABLE reminders ADD COLUMN scheduled_for TEXT NOT NULL DEFAULT ''"));
+  if (!columnNames.has("scheduled_email_id")) additions.push(env.DB.prepare("ALTER TABLE reminders ADD COLUMN scheduled_email_id TEXT NOT NULL DEFAULT ''"));
+  if (additions.length) await env.DB.batch(additions);
+
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_reminders_status_scheduled ON reminders(status, scheduled_for)").run();
 }

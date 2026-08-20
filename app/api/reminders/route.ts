@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { sendReminderConfirmation } from "../../resend-email";
+import { planReminderSchedule } from "../../reminder-schedule";
+import { scheduleReminderEmail, sendReminderConfirmation } from "../../resend-email";
 import { ensureReminderSchema, getDb } from "../../../db";
 import { reminders } from "../../../db/schema";
 
@@ -26,6 +27,7 @@ export async function GET() {
     delivery: reminders.delivery,
     leadDays: reminders.leadDays,
     primaryDate: reminders.primaryDate,
+    scheduledFor: reminders.scheduledFor,
     status: reminders.status,
     createdAt: reminders.createdAt,
   }).from(reminders)
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
     const analysis = payload.analysis && typeof payload.analysis === "object" ? payload.analysis : {};
     const analysisJson = JSON.stringify(analysis).slice(0, 20_000);
     const id = crypto.randomUUID();
+    const schedule = planReminderSchedule(primaryDate, leadDays);
 
     await ensureReminderSchema();
     const db = getDb();
@@ -77,15 +80,34 @@ export async function POST(request: Request) {
       delivery,
       leadDays,
       primaryDate,
+      locale,
       analysisJson,
       status: "draft",
     });
 
-    const email = await sendReminderConfirmation({ id, leadDays, locale, primaryDate, recipientEmail, source, topic });
-    const status = email.sent ? "confirmation_sent" : "email_failed";
-    await db.update(reminders).set({ status, updatedAt: new Date().toISOString() }).where(eq(reminders.id, id));
+    const emailInput = { id, leadDays, locale, primaryDate, recipientEmail, source, topic };
+    const scheduledEmail = schedule.status === "scheduled"
+      ? await scheduleReminderEmail(emailInput, schedule.scheduledAt)
+      : { sent: false, providerId: "" };
+    const scheduledFor = scheduledEmail.sent && schedule.status === "scheduled" ? schedule.scheduledAt : "";
+    const confirmation = await sendReminderConfirmation(emailInput, scheduledFor);
+    const status = scheduledFor
+      ? "scheduled"
+      : schedule.status === "outside-window"
+        ? "awaiting_schedule_window"
+        : schedule.status === "past" || schedule.status === "invalid-date" || schedule.status === "missing-date"
+          ? "needs_date_review"
+          : "schedule_failed";
+    await db.update(reminders).set({
+      status,
+      scheduledFor,
+      scheduledEmailId: scheduledEmail.providerId ?? "",
+      updatedAt: new Date().toISOString(),
+    }).where(eq(reminders.id, id));
 
-    return Response.json({ reminder: { id, status, recipientEmail, confirmationSent: email.sent } }, { status: 201 });
+    return Response.json({
+      reminder: { id, status, recipientEmail, confirmationSent: confirmation.sent, scheduled: Boolean(scheduledFor), scheduledFor },
+    }, { status: 201 });
   } catch {
     return Response.json({ error: "The reminder could not be saved." }, { status: 500 });
   }

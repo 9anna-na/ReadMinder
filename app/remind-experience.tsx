@@ -32,15 +32,16 @@ const content = {
     placeholder: "例如：合約快到期、待辦還沒完成……", send: "送出", user: "你",
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
     sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
-    analysisTitle: "ReadMinder 讀到這些期限線索", datesFound: "辨識到的日期", keywordsFound: "期限關鍵字",
-    noDate: "目前沒有找到明確日期，你仍可以繼續建立提醒。", limited: "文件很長，ReadMinder 已分析前段內容。建議確認下方日期是否完整。",
+    analysisTitle: "ReadMinder 讀到這些期限線索", datesFound: "選擇要提醒的日期", keywordsFound: "期限關鍵字",
+    noDate: "目前沒有找到明確日期，請在下方手動選擇。", limited: "文件很長，ReadMinder 已分析前段內容。建議確認下方日期是否完整。",
     analyzing: "正在讀取文件…", readErrors: {
       "file-too-large": "檔案超過 10 MB，請縮小後再試一次。", unsupported: "目前不支援這個格式；舊版 .doc 請先另存成 .docx。",
       empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
     },
+    manualDate: "確認提醒日期", dateHint: "可自動排定未來 30 天內的 Email", dateRequired: "請先選擇一個提醒日期。",
     remindBefore: "提前多久提醒", days: "天", recipientEmail: "提醒要寄到哪個 Email？", emailPlaceholder: "you@example.com",
-    emailConsent: "按下儲存即同意 ReadMinder 僅將此 Email 用於這筆提醒。", testMode: "測試模式目前只能寄到你註冊 Resend 的信箱。", saving: "正在安全儲存…", saved: "已儲存到雲端 ✓", sent: "確認信已寄出 ✓",
-    sentNote: "提醒規則已保存，設定確認信也已寄出。請到收件匣看看！", pendingNote: "提醒已保存，但確認信未寄出；測試模式請使用你註冊 Resend 的信箱。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
+    emailConsent: "按下儲存即同意 ReadMinder 僅將此 Email 用於這筆提醒。", testMode: "測試模式目前只能寄到你註冊 Resend 的信箱。", saving: "正在安全儲存…", saved: "已儲存到雲端 ✓", sent: "確認信已寄出 ✓", scheduled: "自動提醒已排定 ✓",
+    scheduledNote: "自動提醒將在這個時間寄出：", reviewNote: "提醒已儲存，但所選日期目前無法自動排定；請選擇有效的未來日期。", waitingNote: "提醒已儲存，但寄送時間超過目前 30 天排程範圍。", pendingNote: "提醒已保存，但確認信未寄出；測試模式請使用你註冊 Resend 的信箱。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
   },
   en: {
     lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in",
@@ -66,15 +67,16 @@ const content = {
     placeholder: "Type your message...", send: "Send", user: "You",
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
     sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
-    analysisTitle: "ReadMinder found these deadline signals", datesFound: "Dates found", keywordsFound: "Deadline keywords",
-    noDate: "No explicit date was found. You can still continue building the reminder.", limited: "This is a long document, so ReadMinder analysed its first section. Check that the dates below are complete.",
+    analysisTitle: "ReadMinder found these deadline signals", datesFound: "Choose the date to remind you about", keywordsFound: "Deadline keywords",
+    noDate: "No explicit date was found. Choose one manually below.", limited: "This is a long document, so ReadMinder analysed its first section. Check that the dates below are complete.",
     analyzing: "Reading document…", readErrors: {
       "file-too-large": "This file is over 10 MB. Please reduce its size and try again.", unsupported: "This format is not supported yet. Save legacy .doc files as .docx and try again.",
       empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
     },
+    manualDate: "Confirm the reminder date", dateHint: "Email can be scheduled automatically within the next 30 days", dateRequired: "Choose a reminder date first.",
     remindBefore: "Remind me before", days: "days", recipientEmail: "Which email should receive the reminder?", emailPlaceholder: "you@example.com",
-    emailConsent: "By saving, you agree that ReadMinder may use this email only for this reminder.", testMode: "Test mode can currently send only to the email registered with your Resend account.", saving: "Saving securely…", saved: "Saved to the cloud ✓", sent: "Confirmation sent ✓",
-    sentNote: "Your reminder rule is saved and its confirmation email has been sent. Check your inbox!", pendingNote: "Your reminder is saved, but confirmation could not be sent. In test mode, use your Resend account email.", saveError: "We couldn't save this reminder. Check that you're signed in and try again.",
+    emailConsent: "By saving, you agree that ReadMinder may use this email only for this reminder.", testMode: "Test mode can currently send only to the email registered with your Resend account.", saving: "Saving securely…", saved: "Saved to the cloud ✓", sent: "Confirmation sent ✓", scheduled: "Automatic reminder scheduled ✓",
+    scheduledNote: "Your automatic reminder will be sent at: ", reviewNote: "The reminder was saved, but the selected date could not be scheduled. Choose a valid future date.", waitingNote: "The reminder was saved, but its send time is outside the current 30-day scheduling window.", pendingNote: "Your reminder is saved, but confirmation could not be sent. In test mode, use your Resend account email.", saveError: "We couldn't save this reminder. Check that you're signed in and try again.",
   },
 } as const;
 
@@ -102,12 +104,15 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   const [source, setSource] = useState(""); const [link, setLink] = useState("");
   const [format, setFormat] = useState(""); const [delivery, setDelivery] = useState("");
   const [analysis, setAnalysis] = useState<ReminderAnalysis | null>(null);
+  const [selectedDate, setSelectedDate] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
   const [leadDays, setLeadDays] = useState(7);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [saved, setSaved] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [scheduleStatus, setScheduleStatus] = useState("");
+  const [scheduledFor, setScheduledFor] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -115,7 +120,8 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
 
   function start() { setScreen("builder"); window.scrollTo({ top: 0 }); }
   function submitTopic(event: FormEvent) { event.preventDefault(); if (draft.trim()) { setTopic(draft.trim()); setStep(2); } }
-  function useLink() { if (link.trim()) { setSource(link.trim()); setAnalysis(analyzeReminderText(link.trim(), link.trim(), true)); setStep(3); } }
+  function applyAnalysis(nextAnalysis: ReminderAnalysis) { setAnalysis(nextAnalysis); setSelectedDate(nextAnalysis.primaryDate); }
+  function useLink() { if (link.trim()) { const nextAnalysis = analyzeReminderText(link.trim(), link.trim(), true); setSource(link.trim()); applyAnalysis(nextAnalysis); setStep(3); } }
   async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -124,7 +130,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
     try {
       const document = await extractDocumentText(file);
       setSource(file.name);
-      setAnalysis(analyzeReminderText(document.text, file.name, document.limited));
+      applyAnalysis(analyzeReminderText(document.text, file.name, document.limited));
       setStep(3);
     } catch (error) {
       const code = error instanceof DocumentReadError ? error.code : "read-failed";
@@ -138,7 +144,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
     const fileName = locale === "zh" ? "年度顧問合約.csv" : "annual-consulting-contract.csv";
     const sample = sampleReminderDocument(locale);
     setSource(fileName);
-    setAnalysis(analyzeReminderText(sample, fileName));
+    applyAnalysis(analyzeReminderText(sample, fileName));
     setStep(3);
   }
   async function saveReminder() {
@@ -149,11 +155,13 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
       const response = await fetch("/api/reminders", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topic, source, format, delivery, leadDays, recipientEmail, primaryDate: analysis?.primaryDate ?? "", analysis, locale }),
+        body: JSON.stringify({ topic, source, format, delivery, leadDays, recipientEmail, primaryDate: selectedDate, analysis, locale }),
       });
       if (!response.ok) throw new Error("save failed");
-      const result = await response.json() as { reminder?: { confirmationSent?: boolean } };
+      const result = await response.json() as { reminder?: { confirmationSent?: boolean; scheduledFor?: string; status?: string } };
       setConfirmationSent(Boolean(result.reminder?.confirmationSent));
+      setScheduledFor(result.reminder?.scheduledFor ?? "");
+      setScheduleStatus(result.reminder?.status ?? "");
       setSaved(true);
     } catch {
       setSaveError(t.saveError);
@@ -161,7 +169,9 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
       setSaving(false);
     }
   }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setRecipientEmail(""); setSaved(false); setConfirmationSent(false); setSaving(false); setSaveError(""); }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setSelectedDate(""); setAnalysisError(""); setLeadDays(7); setRecipientEmail(""); setSaved(false); setConfirmationSent(false); setScheduleStatus(""); setScheduledFor(""); setSaving(false); setSaveError(""); }
+
+  const scheduledLabel = scheduledFor ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(scheduledFor)) : "";
 
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
@@ -201,14 +211,14 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
           {analysis && <div className="f-analysis-card">
             <div className="f-analysis-head"><span>✦</span><div><small>DOCUMENT ANALYSIS</small><h3>{t.analysisTitle}</h3></div></div>
             {analysis.limited && <p className="f-analysis-warning">{t.limited}</p>}
-            {analysis.signals.length ? <div className="f-signal-list"><span>{t.datesFound}</span>{analysis.signals.slice(0, 3).map((signal) => <div key={`${signal.date}-${signal.rawDate}`}><b>{signal.date}</b><p>{signal.context}</p></div>)}</div> : <p className="f-analysis-empty">{t.noDate}</p>}
+            {analysis.signals.length ? <div className="f-signal-list"><span>{t.datesFound}</span>{analysis.signals.slice(0, 3).map((signal) => <button type="button" className={selectedDate === signal.date ? "is-selected" : ""} onClick={() => setSelectedDate(signal.date)} key={`${signal.date}-${signal.rawDate}`}><b>{signal.date}</b><p>{signal.context}</p><i>{selectedDate === signal.date ? "✓" : "○"}</i></button>)}</div> : <p className="f-analysis-empty">{t.noDate}</p>}
             {!!analysis.keywords.length && <div className="f-keywords"><span>{t.keywordsFound}</span><div>{analysis.keywords.map((keyword) => <b key={keyword}>{keyword}</b>)}</div></div>}
-            <label className="f-lead-days"><span>{t.remindBefore}</span><select value={leadDays} onChange={(event) => setLeadDays(Number(event.target.value))}><option value={1}>1 {t.days}</option><option value={3}>3 {t.days}</option><option value={7}>7 {t.days}</option><option value={14}>14 {t.days}</option><option value={30}>30 {t.days}</option></select></label>
           </div>}
+          <div className="f-date-settings"><label><span>{t.manualDate}</span><input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></label><small>{t.dateHint}</small><label className="f-lead-days"><span>{t.remindBefore}</span><select value={leadDays} onChange={(event) => setLeadDays(Number(event.target.value))}><option value={1}>1 {t.days}</option><option value={3}>3 {t.days}</option><option value={7}>7 {t.days}</option><option value={14}>14 {t.days}</option><option value={30}>30 {t.days}</option></select></label></div>
           <div className="f-choices">{formats[locale].map((item) => <button key={item.label} onClick={() => { setFormat(item.label); window.setTimeout(() => setStep(4), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>→</em></button>)}</div>
         </>}
         {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} disabled={!item.available} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>{item.available ? "→" : "○"}</em></button>)}</div>}
-        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small><small className="f-test-mode">◎ {t.testMode}</small></label><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !recipientEmail.includes("@") || !recipientEmail.includes(".")} onClick={saveReminder}>{saved ? confirmationSent ? t.sent : t.saved : saving ? t.saving : t.activate} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <p className="f-saved-note">{confirmationSent ? t.sentNote : t.pendingNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
+        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{selectedDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{selectedDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div>{!selectedDate && <p className="f-save-error" role="alert">! {t.dateRequired}</p>}<label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small><small className="f-test-mode">◎ {t.testMode}</small></label><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !selectedDate || !recipientEmail.includes("@") || !recipientEmail.includes(".")} onClick={saveReminder}>{saved ? scheduledFor ? t.scheduled : confirmationSent ? t.sent : t.saved : saving ? t.saving : t.activate} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <p className="f-saved-note">{scheduledFor ? `${t.scheduledNote}${scheduledLabel}` : scheduleStatus === "awaiting_schedule_window" ? t.waitingNote : confirmationSent ? t.reviewNote : t.pendingNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
       </div>
       {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
     </section><Footer />

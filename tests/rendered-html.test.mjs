@@ -75,6 +75,21 @@ test("sends confirmation email through a server-side secret", async () => {
 
   assert.match(emailModule, /https:\/\/api\.resend\.com\/emails/);
   assert.match(emailModule, /runtime\.RESEND_API_KEY/);
+  assert.match(emailModule, /scheduled_at/);
+  assert.match(emailModule, /scheduled_reminder/);
   assert.match(exampleEnv, /RESEND_API_KEY=\n/);
   assert.doesNotMatch(emailModule, /re_[A-Za-z0-9_-]{30,}/);
+});
+
+test("plans automatic reminder emails in Taipei time", async () => {
+  const { planReminderSchedule } = await import("../app/reminder-schedule.ts");
+  const now = new Date("2026-08-20T00:00:00.000Z");
+
+  assert.deepEqual(planReminderSchedule("2026-08-27", 3, now), {
+    status: "scheduled",
+    scheduledAt: "2026-08-24T01:00:00.000Z",
+  });
+  assert.equal(planReminderSchedule("2026-08-19", 1, now).status, "past");
+  assert.equal(planReminderSchedule("2026-10-30", 1, now).status, "outside-window");
+  assert.equal(planReminderSchedule("2026-02-30", 1, now).status, "invalid-date");
 });
