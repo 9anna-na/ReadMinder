@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import "./figma.css";
 
-const title = "Remind｜重要的事，不再錯過";
+const title = "ReadMinder｜讀懂重要日期，準時提醒你";
 const description = "針對文件、表格、日曆或網站資料，用幾個簡單問題建立自動提醒。";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
-    openGraph: { title, description, images: [{ url: image, width: 1733, height: 909 }] },
+    openGraph: { title, description, images: [{ url: image, width: 1731, height: 909 }] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }

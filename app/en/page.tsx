@@ -1,5 +1,5 @@
-import RemindExperience from "../remind-experience";
+import ReadMinderExperience from "../remind-experience";
 
 export default function EnglishPage() {
-  return <RemindExperience locale="en" />;
+  return <ReadMinderExperience locale="en" />;
 }

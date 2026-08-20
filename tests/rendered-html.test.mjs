@@ -30,7 +30,7 @@ test("server-renders the Traditional Chinese ReadMinder landing page", async () 
 
   const html = await response.text();
   assert.match(html, /<html lang="zh-Hant">/);
-  assert.match(html, /Remind｜重要的事，不再錯過/);
+  assert.match(html, /ReadMinder｜讀懂重要日期，準時提醒你/);
   assert.match(html, /建立我的提醒/);
   assert.match(html, /匯入任何來源/);
   assert.match(html, /href="\/en"/);
@@ -58,5 +58,6 @@ test("keeps document parsing local and supports the advertised formats", async (
   assert.match(reader, /import\("xlsx"\)/);
   assert.match(reader, /MAX_FILE_BYTES = 10 \* 1024 \* 1024/);
   assert.match(experience, /目前在你的瀏覽器內分析，不會上傳文件內容/);
+  assert.match(experience, /ReadMinder 讀到這些期限線索/);
   assert.match(experience, /\.pdf,\.csv,\.xlsx,\.xls,\.docx,\.txt,\.json,\.md/);
 });

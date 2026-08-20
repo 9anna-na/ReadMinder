@@ -93,7 +93,7 @@
   .f-analysis-card{margin-left:0;padding:16px}.f-analysis-head h3{font-size:17px}.f-signal-list>div{grid-template-columns:1fr;gap:4px}.f-signal-list p{white-space:normal}.f-final-rule{grid-template-columns:1fr auto}.f-final-rule em{grid-column:1/-1}
 }
 
-/* Remind v4: larger type, rounded Chinese, and Figma-matched proportions */
+/* ReadMinder: larger type, rounded Chinese, and Figma-matched proportions */
 .f-landing,.f-builder { font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Yuanti TC","PingFang TC","Microsoft JhengHei",sans-serif; font-size:16px; }
 .f-en { font-family:"Avenir Next","Trebuchet MS",Arial,sans-serif; }
 .f-header-actions,.f-builder-actions { display:flex; align-items:center; gap:14px; }

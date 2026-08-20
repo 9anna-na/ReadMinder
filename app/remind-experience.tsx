@@ -9,9 +9,9 @@ type Option = { label: string; icon: string; note?: string };
 
 const content = {
   zh: {
-    lang: "EN", langHref: "/en", homeLabel: "Remind 首頁", login: "登入",
+    lang: "EN", langHref: "/en", homeLabel: "ReadMinder 首頁", login: "登入",
     badge: "✦ 個人化提醒設定 ✦", heroTop: "重要的事，", heroEm: "不再錯過",
-    intro: "回答幾個問題、提供資料，Remind 會在兩分鐘內替你建立專屬提醒系統。",
+    intro: "回答幾個問題、提供資料，ReadMinder 會讀懂文件中的重要日期，替你建立專屬提醒。",
     cta: "建立我的提醒", free: "免費 · 不需註冊",
     features: [
       ["匯入任何來源", "PDF、試算表、文件，或直接貼上資料連結。", "↗"],
@@ -19,7 +19,7 @@ const content = {
       ["送到習慣的地方", "LINE、Email、Slack、行事曆，選你最常看的。", "→"],
     ],
     subtitle: "你的個人提醒建立助手", setup: "設定中", complete: "完成",
-    hello: "嗨！我是 Remind，你的個人提醒建立助手 👋",
+    hello: "嗨！我是 ReadMinder，你的文件提醒建立助手 👋",
     guide: "我會帶你快速完成設定，只要幾個步驟，提醒就準備好了。",
     topicQuestion: "你想針對什麼主題建立提醒？",
     sourceQuestion: "收到！你有相關的文件或資料來源嗎？上傳檔案，或直接貼上連結就可以。",
@@ -32,8 +32,8 @@ const content = {
     placeholder: "例如：合約快到期、待辦還沒完成……", send: "送出", user: "你",
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
     sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
-    analysisTitle: "Remind 讀到這些期限線索", datesFound: "辨識到的日期", keywordsFound: "期限關鍵字",
-    noDate: "目前沒有找到明確日期，你仍可以繼續建立提醒。", limited: "文件很長，Remind 已分析前段內容。建議確認下方日期是否完整。",
+    analysisTitle: "ReadMinder 讀到這些期限線索", datesFound: "辨識到的日期", keywordsFound: "期限關鍵字",
+    noDate: "目前沒有找到明確日期，你仍可以繼續建立提醒。", limited: "文件很長，ReadMinder 已分析前段內容。建議確認下方日期是否完整。",
     analyzing: "正在讀取文件…", readErrors: {
       "file-too-large": "檔案超過 10 MB，請縮小後再試一次。", unsupported: "目前不支援這個格式；舊版 .doc 請先另存成 .docx。",
       empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
@@ -41,9 +41,9 @@ const content = {
     remindBefore: "提前多久提醒", days: "天", saved: "已儲存在這台裝置 ✓", savedNote: "這筆提醒已保存在瀏覽器；下一階段會接上帳號、排程與真正通知。",
   },
   en: {
-    lang: "中文", langHref: "/", homeLabel: "Remind home", login: "Log in",
+    lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in",
     badge: "✦ PERSONALISED REMINDER SETUP ✦", heroTop: "Never miss what", heroEm: "matters most",
-    intro: "Answer a few questions, upload your data, and Remind builds a tailored reminder system — in under two minutes.",
+    intro: "Answer a few questions, upload your data, and ReadMinder turns important dates into tailored reminders.",
     cta: "Build my reminder", free: "Free · No sign-up needed",
     features: [
       ["Import any source", "Upload a PDF or spreadsheet, or simply paste a link.", "↗"],
@@ -51,7 +51,7 @@ const content = {
       ["Delivered your way", "Send it to LINE, email, Slack, or your calendar.", "→"],
     ],
     subtitle: "Your personal reminder builder", setup: "SETUP", complete: "COMPLETE",
-    hello: "Hi there! I'm Remind, your personal reminder builder. 👋",
+    hello: "Hi there! I'm ReadMinder, your document-aware reminder builder. 👋",
     guide: "I'll guide you through a quick setup — a few steps and your reminders will be ready.",
     topicQuestion: "What's the topic you'd like to build reminders around?",
     sourceQuestion: "Great. Do you have a document or data source? Upload a file or paste a link.",
@@ -64,8 +64,8 @@ const content = {
     placeholder: "Type your message...", send: "Send", user: "You",
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
     sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
-    analysisTitle: "Remind found these deadline signals", datesFound: "Dates found", keywordsFound: "Deadline keywords",
-    noDate: "No explicit date was found. You can still continue building the reminder.", limited: "This is a long document, so Remind analysed its first section. Check that the dates below are complete.",
+    analysisTitle: "ReadMinder found these deadline signals", datesFound: "Dates found", keywordsFound: "Deadline keywords",
+    noDate: "No explicit date was found. You can still continue building the reminder.", limited: "This is a long document, so ReadMinder analysed its first section. Check that the dates below are complete.",
     analyzing: "Reading document…", readErrors: {
       "file-too-large": "This file is over 10 MB. Please reduce its size and try again.", unsupported: "This format is not supported yet. Save legacy .doc files as .docx and try again.",
       empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
@@ -90,7 +90,7 @@ const deliveries: Record<Locale, Option[]> = {
   en: [{ label: "LINE", icon: "L" }, { label: "Email", icon: "@" }, { label: "Push notification", icon: "◉" }, { label: "Slack", icon: "#" }, { label: "Google Calendar", icon: "31" }],
 };
 
-export default function RemindExperience({ locale = "zh" }: { locale?: Locale }) {
+export default function ReadMinderExperience({ locale = "zh" }: { locale?: Locale }) {
   const t = content[locale];
   const [screen, setScreen] = useState<"landing" | "builder">("landing");
   const [step, setStep] = useState(1);
@@ -135,15 +135,15 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
   }
   function saveReminder() {
     const reminder = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), topic, source, format, delivery, leadDays, analysis };
-    const current = JSON.parse(window.localStorage.getItem("remind.reminders") ?? "[]");
-    window.localStorage.setItem("remind.reminders", JSON.stringify([...current, reminder]));
+    const current = JSON.parse(window.localStorage.getItem("readminder.reminders") ?? window.localStorage.getItem("remind.reminders") ?? "[]");
+    window.localStorage.setItem("readminder.reminders", JSON.stringify([...current, reminder]));
     setSaved(true);
   }
   function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setSaved(false); }
 
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
-      <a className="f-brand" href="#top" aria-label={t.homeLabel}><span className="f-brand-mark">R</span><span>Remind</span></a>
+      <a className="f-brand" href="#top" aria-label={t.homeLabel}><span className="f-brand-mark">R</span><span>ReadMinder</span></a>
       <div className="f-header-actions"><a href={t.langHref}>{t.lang}</a><button className="f-header-cta" onClick={() => window.alert(t.loginSoon)}>{t.login} <span>→</span></button></div>
     </header>
     <div className="f-stitch" aria-hidden="true">{Array.from({ length: 14 }).map((_, i) => <span key={i} />)}</div>
@@ -157,7 +157,7 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
 
   return <main className={`f-builder f-${locale}`}>
     <header className="f-builder-header">
-      <button className="f-brand f-brand-button" onClick={() => setScreen("landing")} aria-label={locale === "en" ? "Back to home" : "回到首頁"}><span className="f-brand-mark">R</span><span className="f-brand-copy"><b>Remind</b><small>{t.subtitle}</small></span></button>
+      <button className="f-brand f-brand-button" onClick={() => setScreen("landing")} aria-label={locale === "en" ? "Back to home" : "回到首頁"}><span className="f-brand-mark">R</span><span className="f-brand-copy"><b>ReadMinder</b><small>{t.subtitle}</small></span></button>
       <div className="f-builder-actions"><a href={t.langHref}>{t.lang}</a><button onClick={() => window.alert(t.loginSoon)}>{t.login}</button><span className="f-setup-tag">{t.setup}</span></div>
     </header>
     <section className="f-chat-card" aria-live="polite">
