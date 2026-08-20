@@ -76,6 +76,7 @@
 
 /* Working MVP: local document analysis and saved reminder rule */
 .f-local-note { margin:11px 0 0; color:#776a67; font-size:13px; line-height:1.5; text-align:center; }
+.f-upload-error { margin:11px 0 0; padding:11px 13px; color:#7b2920; background:#f6d6d0; border:1px solid #cf8174; font-size:13px; font-weight:800; line-height:1.5; }
 .f-sample { width:100%; margin-top:12px; padding:13px 16px; border:1.5px solid var(--f-navy); background:var(--f-cream); color:var(--f-navy); font-size:14px; font-weight:900; cursor:pointer; box-shadow:3px 3px 0 #dfa59b; }
 .f-analysis-card { margin:5px 0 6px 45px; padding:20px; border:2px solid var(--f-navy); background:#fff8f2; box-shadow:5px 5px 0 var(--f-red); animation:f-in .3s ease both; }
 .f-analysis-head { display:flex; align-items:center; gap:12px; padding-bottom:15px; border-bottom:1px solid #dcb6ae; }

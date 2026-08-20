@@ -8,7 +8,7 @@ const description = "針對文件、表格、日曆或網站資料，用幾個�
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("host") ?? "ding-link-reminder.jls940519.chatgpt.site";
+  const host = requestHeaders.get("host") ?? "localhost:3000";
   const protocol = host.includes("localhost") ? "http" : "https";
   const image = `${protocol}://${host}/og.png`;
 

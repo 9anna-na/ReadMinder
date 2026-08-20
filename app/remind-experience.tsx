@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { DocumentReadError, extractDocumentText } from "./file-readers";
 import { analyzeReminderText, ReminderAnalysis, sampleReminderDocument } from "./reminder-analysis";
 
 type Locale = "zh" | "en";
@@ -24,7 +25,7 @@ const content = {
     sourceQuestion: "收到！你有相關的文件或資料來源嗎？上傳檔案，或直接貼上連結就可以。",
     formatQuestion: "很好，我會從這份資料裡找出需要注意的變化。你希望提醒怎麼整理？",
     deliveryQuestion: "最後一題：提醒要傳送到哪裡？",
-    sourcePrefix: "資料來源：", chooseData: "選擇文件或資料", fileTypes: "PDF、CSV、Excel、Word、TXT、JSON",
+    sourcePrefix: "資料來源：", chooseData: "選擇文件或資料", fileTypes: "PDF、DOCX、Excel、CSV、TXT、JSON（最大 10 MB）",
     orLink: "或貼上連結", useLink: "使用連結", later: "稍後再提供", laterValue: "稍後連接資料",
     ready: "你的提醒準備好了", readyCopy: "從現在開始，重要變化會主動來找你。",
     summary: ["主題", "資料", "格式", "傳送到"], activate: "儲存這個提醒", restart: "再建立一個提醒",
@@ -32,7 +33,11 @@ const content = {
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
     sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
     analysisTitle: "Remind 讀到這些期限線索", datesFound: "辨識到的日期", keywordsFound: "期限關鍵字",
-    noDate: "目前沒有找到明確日期，你仍可以繼續建立提醒。", limited: "這個格式目前先讀取檔名；TXT、CSV、JSON 可分析完整內容。",
+    noDate: "目前沒有找到明確日期，你仍可以繼續建立提醒。", limited: "文件很長，Remind 已分析前段內容。建議確認下方日期是否完整。",
+    analyzing: "正在讀取文件…", readErrors: {
+      "file-too-large": "檔案超過 10 MB，請縮小後再試一次。", unsupported: "目前不支援這個格式；舊版 .doc 請先另存成 .docx。",
+      empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
+    },
     remindBefore: "提前多久提醒", days: "天", saved: "已儲存在這台裝置 ✓", savedNote: "這筆提醒已保存在瀏覽器；下一階段會接上帳號、排程與真正通知。",
   },
   en: {
@@ -52,7 +57,7 @@ const content = {
     sourceQuestion: "Great. Do you have a document or data source? Upload a file or paste a link.",
     formatQuestion: "Perfect. How would you like your reminders to be organised?",
     deliveryQuestion: "One last question: where should we send your reminders?",
-    sourcePrefix: "Source: ", chooseData: "Choose a document or data file", fileTypes: "PDF, CSV, Excel, Word, TXT, JSON",
+    sourcePrefix: "Source: ", chooseData: "Choose a document or data file", fileTypes: "PDF, DOCX, Excel, CSV, TXT, JSON (10 MB max)",
     orLink: "or paste a link", useLink: "Use link", later: "I'll add it later", laterValue: "Connect data later",
     ready: "Your reminder is ready", readyCopy: "You're all set. Important changes will now come to you.",
     summary: ["TOPIC", "SOURCE", "FORMAT", "DELIVERY"], activate: "Save this reminder", restart: "Build another reminder",
@@ -60,7 +65,11 @@ const content = {
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
     sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
     analysisTitle: "Remind found these deadline signals", datesFound: "Dates found", keywordsFound: "Deadline keywords",
-    noDate: "No explicit date was found. You can still continue building the reminder.", limited: "This format currently uses the filename only. TXT, CSV and JSON support full content analysis.",
+    noDate: "No explicit date was found. You can still continue building the reminder.", limited: "This is a long document, so Remind analysed its first section. Check that the dates below are complete.",
+    analyzing: "Reading document…", readErrors: {
+      "file-too-large": "This file is over 10 MB. Please reduce its size and try again.", unsupported: "This format is not supported yet. Save legacy .doc files as .docx and try again.",
+      empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
+    },
     remindBefore: "Remind me before", days: "days", saved: "Saved on this device ✓", savedNote: "This reminder is stored in your browser. Accounts, scheduling and live delivery come next.",
   },
 } as const;
@@ -90,6 +99,7 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
   const [format, setFormat] = useState(""); const [delivery, setDelivery] = useState("");
   const [analysis, setAnalysis] = useState<ReminderAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
   const [leadDays, setLeadDays] = useState(7);
   const [saved, setSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -102,13 +112,19 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
     const file = event.target.files?.[0];
     if (!file) return;
     setAnalyzing(true);
-    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-    const readable = ["txt", "csv", "json", "md"].includes(extension);
-    const text = readable ? await file.text() : "";
-    setSource(file.name);
-    setAnalysis(analyzeReminderText(text, file.name, !readable));
-    setAnalyzing(false);
-    setStep(3);
+    setAnalysisError("");
+    try {
+      const document = await extractDocumentText(file);
+      setSource(file.name);
+      setAnalysis(analyzeReminderText(document.text, file.name, document.limited));
+      setStep(3);
+    } catch (error) {
+      const code = error instanceof DocumentReadError ? error.code : "read-failed";
+      setAnalysisError(t.readErrors[code]);
+      event.target.value = "";
+    } finally {
+      setAnalyzing(false);
+    }
   }
   function useSample() {
     const fileName = locale === "zh" ? "年度顧問合約.csv" : "annual-consulting-contract.csv";
@@ -123,7 +139,7 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
     window.localStorage.setItem("remind.reminders", JSON.stringify([...current, reminder]));
     setSaved(true);
   }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setLeadDays(7); setSaved(false); }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setSaved(false); }
 
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
@@ -152,9 +168,10 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
         {step >= 3 && <Bot text={t.formatQuestion} />}{format && <User text={format} label={t.user} />}{step >= 4 && <Bot text={t.deliveryQuestion} />}{delivery && <User text={delivery} label={t.user} />}
 
         {step === 2 && <div className="f-source-picker">
-          <input ref={fileRef} className="f-hidden" type="file" accept=".pdf,.csv,.xlsx,.xls,.doc,.docx,.txt,.json,.md" onChange={chooseFile} />
-          <button className="f-upload" disabled={analyzing} onClick={() => fileRef.current?.click()}><span>{analyzing ? "…" : "↑"}</span><b>{analyzing ? "Analyzing…" : t.chooseData}</b><small>{t.fileTypes}</small></button>
+          <input ref={fileRef} className="f-hidden" type="file" accept=".pdf,.csv,.xlsx,.xls,.docx,.txt,.json,.md" onChange={chooseFile} />
+          <button className="f-upload" disabled={analyzing} onClick={() => fileRef.current?.click()}><span>{analyzing ? "…" : "↑"}</span><b>{analyzing ? t.analyzing : t.chooseData}</b><small>{t.fileTypes}</small></button>
           <p className="f-local-note">◎ {t.localOnly}</p>
+          {analysisError && <p className="f-upload-error" role="alert">! {analysisError}</p>}
           <button className="f-sample" onClick={useSample}>✦ {t.sample} →</button>
           <div className="f-or"><span>{t.orLink}</span></div><div className="f-link"><input aria-label={t.orLink} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://docs.google.com/..." /><button disabled={!link.trim()} onClick={useLink}>{t.useLink} →</button></div><button className="f-skip" onClick={() => { setSource(t.laterValue); setAnalysis(null); setStep(3); }}>{t.later}</button>
         </div>}
@@ -171,7 +188,7 @@ export default function RemindExperience({ locale = "zh" }: { locale?: Locale })
         {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><b>{item.label}</b><em>→</em></button>)}</div>}
         {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved} onClick={saveReminder}>{saved ? t.saved : t.activate} <span>{saved ? "" : "→"}</span></button>{saved && <p className="f-saved-note">{t.savedNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
       </div>
-      {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input autoFocus aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
+      {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
     </section><Footer />
   </main>;
 }

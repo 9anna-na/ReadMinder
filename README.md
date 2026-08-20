@@ -10,7 +10,7 @@ Most reminder tools expect users to manually enter every date. ReadMinder explor
 
 - Conversational four-step reminder builder
 - Traditional Chinese and English experiences
-- Local content analysis for TXT, CSV, JSON, and Markdown files
+- Local content analysis for text-based PDF, DOCX, XLS/XLSX, TXT, CSV, JSON, and Markdown files
 - Date and deadline-keyword extraction
 - Relevant source-context preview
 - Configurable lead time: 1, 3, 7, 14, or 30 days
@@ -21,16 +21,18 @@ Document analysis currently runs in the browser, so supported file contents are 
 
 ## Current limitations
 
-- PDF, Word, and Excel currently use filename-level signals only
+- Scanned/image-only PDFs need OCR and are not readable yet
+- Password-protected PDFs and legacy `.doc` files are not supported
+- Large documents are capped at 10 MB and 250,000 extracted characters for browser performance
 - Saved reminders are device-local
 - Login, scheduled checks, and live LINE/email delivery are not connected yet
 
 ## Roadmap
 
-1. Parse PDF, DOCX, and XLSX contents
-2. Add accounts and durable reminder storage
-3. Add a scheduler and reminder activity log
-4. Connect LINE and email delivery
+1. Add accounts and durable reminder storage
+2. Add a scheduler and reminder activity log
+3. Connect LINE and email delivery
+4. Add OCR for scanned documents
 5. Connect Google Drive and monitor source changes
 
 ## Tech stack
