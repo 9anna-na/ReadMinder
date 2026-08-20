@@ -2,8 +2,6 @@
 
 ReadMinder is a document-aware reminder builder. Describe what matters, provide a file or data source, and it turns deadline signals into a reminder rule you can review and save.
 
-**Live demo:** [ding-link-reminder.jls940519.chatgpt.site](https://ding-link-reminder.jls940519.chatgpt.site/)
-
 ## Why this project
 
 Most reminder tools expect users to manually enter every date. ReadMinder explores a different workflow: let the product read the source material first, surface likely deadlines, and help the user decide when and where to be reminded.
