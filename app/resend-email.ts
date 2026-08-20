@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 
 type ReminderEmailInput = {
+  dates?: Array<{ date: string; leadDays: number; scheduledAt: string }>;
   id: string;
   leadDays: number;
   locale: "zh" | "en";
@@ -32,24 +33,22 @@ function formatScheduledAt(value: string, locale: "zh" | "en") {
 
 function buildConfirmationEmail(input: ReminderEmailInput, scheduledAt = "") {
   const isEnglish = input.locale === "en";
-  const scheduledLabel = formatScheduledAt(scheduledAt, input.locale);
+  const dates = input.dates?.length ? input.dates : [{ date: input.primaryDate, leadDays: input.leadDays, scheduledAt }];
+  const scheduledCount = dates.filter((item) => item.scheduledAt).length;
   const subject = isEnglish ? `ReadMinder setup confirmed: ${input.topic}` : `ReadMinder｜提醒設定已收到：${input.topic}`;
-  const date = input.primaryDate || (isEnglish ? "No explicit date found" : "尚未辨識到明確日期");
   const heading = isEnglish ? "Your reminder setup is saved" : "你的提醒設定已儲存";
   const intro = isEnglish
-    ? scheduledLabel
-      ? `Your automatic reminder is scheduled for ${scheduledLabel}.`
-      : "Your reminder is saved. Choose a valid date within the next 30 days to schedule automatic delivery."
-    : scheduledLabel
-      ? `你的自動提醒已排定於 ${scheduledLabel} 寄出。`
-      : "提醒已儲存；請選擇未來 30 天內的有效日期，才能排定自動寄送。";
+    ? `${dates.length} date reminder${dates.length === 1 ? "" : "s"} saved; ${scheduledCount} scheduled for automatic delivery.`
+    : `已儲存 ${dates.length} 個日期提醒，其中 ${scheduledCount} 個已排定自動寄送。`;
   const labels = isEnglish
     ? { topic: "Topic", source: "Source", date: "Detected date", lead: "Lead time", days: "days" }
     : { topic: "提醒主題", source: "資料來源", date: "辨識日期", lead: "提前提醒", days: "天" };
 
-  const html = `<!doctype html><html><body style="margin:0;background:#f3d7d0;color:#1f3552;font-family:Arial,sans-serif"><div style="max-width:580px;margin:0 auto;padding:36px 20px"><div style="background:#fffaf2;border:2px solid #1f3552;box-shadow:8px 8px 0 #cb4b39;padding:30px"><div style="font-size:24px;font-weight:800;margin-bottom:26px"><span style="display:inline-block;background:#1f3552;color:#fffaf2;padding:9px 13px;margin-right:10px">R</span>ReadMinder</div><h1 style="font-size:30px;line-height:1.2;margin:0 0 12px">${escapeHtml(heading)}</h1><p style="color:#655d5b;line-height:1.7;margin:0 0 24px">${escapeHtml(intro)}</p><div style="border:1px solid #1f3552;background:#fff"><p style="margin:0;padding:12px;border-bottom:1px solid #dfb9b1"><b>${labels.topic}：</b>${escapeHtml(input.topic)}</p><p style="margin:0;padding:12px;border-bottom:1px solid #dfb9b1"><b>${labels.source}：</b>${escapeHtml(input.source)}</p><p style="margin:0;padding:12px;border-bottom:1px solid #dfb9b1"><b>${labels.date}：</b>${escapeHtml(date)}</p><p style="margin:0;padding:12px"><b>${labels.lead}：</b>${input.leadDays} ${labels.days}</p></div></div></div></body></html>`;
+  const dateRows = dates.map((item) => `<p style="margin:0;padding:12px;border-top:1px solid #dfb9b1"><b>${labels.date}：</b>${escapeHtml(item.date)} · ${labels.lead} ${item.leadDays} ${labels.days}${item.scheduledAt ? ` · ${escapeHtml(formatScheduledAt(item.scheduledAt, input.locale))}` : ""}</p>`).join("");
+  const html = `<!doctype html><html><body style="margin:0;background:#f3d7d0;color:#1f3552;font-family:Arial,sans-serif"><div style="max-width:580px;margin:0 auto;padding:36px 20px"><div style="background:#fffaf2;border:2px solid #1f3552;box-shadow:8px 8px 0 #cb4b39;padding:30px"><div style="font-size:24px;font-weight:800;margin-bottom:26px"><span style="display:inline-block;background:#1f3552;color:#fffaf2;padding:9px 13px;margin-right:10px">R</span>ReadMinder</div><h1 style="font-size:30px;line-height:1.2;margin:0 0 12px">${escapeHtml(heading)}</h1><p style="color:#655d5b;line-height:1.7;margin:0 0 24px">${escapeHtml(intro)}</p><div style="border:1px solid #1f3552;background:#fff"><p style="margin:0;padding:12px;border-bottom:1px solid #dfb9b1"><b>${labels.topic}：</b>${escapeHtml(input.topic)}</p><p style="margin:0;padding:12px"><b>${labels.source}：</b>${escapeHtml(input.source)}</p>${dateRows}</div></div></div></body></html>`;
 
-  const text = `${heading}\n\n${intro}\n\n${labels.topic}: ${input.topic}\n${labels.source}: ${input.source}\n${labels.date}: ${date}\n${labels.lead}: ${input.leadDays} ${labels.days}`;
+  const textDates = dates.map((item) => `${labels.date}: ${item.date} · ${labels.lead}: ${item.leadDays} ${labels.days}${item.scheduledAt ? ` · ${formatScheduledAt(item.scheduledAt, input.locale)}` : ""}`).join("\n");
+  const text = `${heading}\n\n${intro}\n\n${labels.topic}: ${input.topic}\n${labels.source}: ${input.source}\n${textDates}`;
   return { html, subject, text };
 }
 

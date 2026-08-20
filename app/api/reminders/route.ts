@@ -49,9 +49,13 @@ export async function POST(request: Request) {
     const reminderFormat = clean(payload.format, 80);
     const delivery = clean(payload.delivery, 80);
     const recipientEmail = clean(payload.recipientEmail, 254).toLowerCase();
-    const primaryDate = clean(payload.primaryDate, 10);
-    const leadDays = Number(payload.leadDays);
     const locale = payload.locale === "en" ? "en" : "zh";
+    const reminderRules = Array.isArray(payload.reminders)
+      ? payload.reminders.slice(0, 10).map((item) => {
+        const rule = item && typeof item === "object" ? item as Record<string, unknown> : {};
+        return { primaryDate: clean(rule.date, 10), leadDays: Number(rule.leadDays) };
+      })
+      : [{ primaryDate: clean(payload.primaryDate, 10), leadDays: Number(payload.leadDays) }];
 
     if (!topic || !source || !reminderFormat || delivery !== "Email") {
       return Response.json({ error: "Reminder details are incomplete." }, { status: 400 });
@@ -59,54 +63,81 @@ export async function POST(request: Request) {
     if (!emailPattern.test(recipientEmail)) {
       return Response.json({ error: "Enter a valid email address." }, { status: 400 });
     }
-    if (!allowedLeadDays.has(leadDays)) {
+    if (!reminderRules.length || reminderRules.some((rule) => !rule.primaryDate || !allowedLeadDays.has(rule.leadDays))) {
       return Response.json({ error: "Choose a supported lead time." }, { status: 400 });
     }
 
     const analysis = payload.analysis && typeof payload.analysis === "object" ? payload.analysis : {};
-    const analysisJson = JSON.stringify(analysis).slice(0, 20_000);
-    const id = crypto.randomUUID();
-    const schedule = planReminderSchedule(primaryDate, leadDays);
+    const analysisJson = JSON.stringify({ ...analysis, selectedReminderRules: reminderRules }).slice(0, 20_000);
+    const groupId = crypto.randomUUID();
 
     await ensureReminderSchema();
     const db = getDb();
-    await db.insert(reminders).values({
-      id,
-      ownerId: user.userId,
-      recipientEmail,
-      topic,
-      source,
-      reminderFormat,
-      delivery,
-      leadDays,
-      primaryDate,
-      locale,
-      analysisJson,
-      status: "draft",
-    });
+    const results: Array<{ date: string; leadDays: number; scheduledFor: string; status: string }> = [];
 
-    const emailInput = { id, leadDays, locale, primaryDate, recipientEmail, source, topic };
-    const scheduledEmail = schedule.status === "scheduled"
-      ? await scheduleReminderEmail(emailInput, schedule.scheduledAt)
-      : { sent: false, providerId: "" };
-    const scheduledFor = scheduledEmail.sent && schedule.status === "scheduled" ? schedule.scheduledAt : "";
-    const confirmation = await sendReminderConfirmation(emailInput, scheduledFor);
-    const status = scheduledFor
+    for (const rule of reminderRules) {
+      const id = crypto.randomUUID();
+      const schedule = planReminderSchedule(rule.primaryDate, rule.leadDays);
+      await db.insert(reminders).values({
+        id,
+        ownerId: user.userId,
+        recipientEmail,
+        topic,
+        source,
+        reminderFormat,
+        delivery,
+        leadDays: rule.leadDays,
+        primaryDate: rule.primaryDate,
+        locale,
+        analysisJson,
+        status: "draft",
+      });
+
+      const emailInput = { id, leadDays: rule.leadDays, locale, primaryDate: rule.primaryDate, recipientEmail, source, topic };
+      const scheduledEmail = schedule.status === "scheduled"
+        ? await scheduleReminderEmail(emailInput, schedule.scheduledAt)
+        : { sent: false, providerId: "" };
+      const scheduledFor = scheduledEmail.sent && schedule.status === "scheduled" ? schedule.scheduledAt : "";
+      const status = scheduledFor
+        ? "scheduled"
+        : schedule.status === "outside-window"
+          ? "awaiting_schedule_window"
+          : schedule.status === "past" || schedule.status === "invalid-date" || schedule.status === "missing-date"
+            ? "needs_date_review"
+            : "schedule_failed";
+      await db.update(reminders).set({
+        status,
+        scheduledFor,
+        scheduledEmailId: scheduledEmail.providerId ?? "",
+        updatedAt: new Date().toISOString(),
+      }).where(eq(reminders.id, id));
+      results.push({ date: rule.primaryDate, leadDays: rule.leadDays, scheduledFor, status });
+    }
+
+    const first = reminderRules[0];
+    const confirmation = await sendReminderConfirmation({
+      id: groupId,
+      leadDays: first.leadDays,
+      locale,
+      primaryDate: first.primaryDate,
+      recipientEmail,
+      source,
+      topic,
+      dates: results.map((result) => ({ date: result.date, leadDays: result.leadDays, scheduledAt: result.scheduledFor })),
+    });
+    const scheduledItems = results.filter((result) => result.scheduledFor).map((result) => ({ date: result.date, scheduledFor: result.scheduledFor }));
+    const status = scheduledItems.length === results.length
       ? "scheduled"
-      : schedule.status === "outside-window"
-        ? "awaiting_schedule_window"
-        : schedule.status === "past" || schedule.status === "invalid-date" || schedule.status === "missing-date"
-          ? "needs_date_review"
-          : "schedule_failed";
-    await db.update(reminders).set({
-      status,
-      scheduledFor,
-      scheduledEmailId: scheduledEmail.providerId ?? "",
-      updatedAt: new Date().toISOString(),
-    }).where(eq(reminders.id, id));
+      : scheduledItems.length
+        ? "partially_scheduled"
+        : results.some((result) => result.status === "awaiting_schedule_window")
+          ? "awaiting_schedule_window"
+          : results.some((result) => result.status === "needs_date_review")
+            ? "needs_date_review"
+            : "schedule_failed";
 
     return Response.json({
-      reminder: { id, status, recipientEmail, confirmationSent: confirmation.sent, scheduled: Boolean(scheduledFor), scheduledFor },
+      reminder: { id: groupId, status, recipientEmail, confirmationSent: confirmation.sent, count: results.length, scheduledItems },
     }, { status: 201 });
   } catch {
     return Response.json({ error: "The reminder could not be saved." }, { status: 500 });

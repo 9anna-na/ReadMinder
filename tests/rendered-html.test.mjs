@@ -93,3 +93,13 @@ test("plans automatic reminder emails in Taipei time", async () => {
   assert.equal(planReminderSchedule("2026-10-30", 1, now).status, "outside-window");
   assert.equal(planReminderSchedule("2026-02-30", 1, now).status, "invalid-date");
 });
+
+test("supports multiple date rules without duplicate cadence choices", async () => {
+  const experience = await readFile(new URL("../app/remind-experience.tsx", import.meta.url), "utf8");
+  const reminderRoute = await readFile(new URL("../app/api/reminders/route.ts", import.meta.url), "utf8");
+
+  assert.doesNotMatch(experience, /每日摘要|每週摘要|自訂排程/);
+  assert.match(experience, /reminders: dateRules/);
+  assert.match(reminderRoute, /for \(const rule of reminderRules\)/);
+  assert.match(reminderRoute, /scheduledItems/);
+});
