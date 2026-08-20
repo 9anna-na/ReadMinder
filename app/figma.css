@@ -90,6 +90,7 @@
 .f-final-rule { display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; margin-bottom:13px; padding:13px; color:white; background:var(--f-navy); }.f-final-rule span { font-size:12px; }.f-final-rule b { font:700 17px/1 Georgia,serif; }.f-final-rule em { color:#f5aea2; font-size:13px; font-style:normal; font-weight:900; }
 .f-activate.is-saved { background:#2e7c58; opacity:1; }.f-saved-note { margin:13px 0 0!important; padding:11px 13px; color:#395d4a!important; background:#e2f1e8; font-size:13px!important; line-height:1.5; text-align:center; }
 .f-email-field { display:grid; gap:7px; margin-top:14px; }.f-email-field>span { font-size:14px; font-weight:900; }.f-email-field input { width:100%; border:1.5px solid var(--f-navy); background:white; padding:12px 13px; color:var(--f-navy); font:700 15px/1.2 inherit; }.f-email-field small { color:#746966; font-size:11px; line-height:1.5; }.f-save-error { margin:13px 0 0!important; padding:11px 13px; color:#7b2920!important; background:#f6d6d0; font-size:13px!important; line-height:1.5; text-align:center; }
+.f-email-field .f-test-mode { padding:8px 10px; color:#765b55; background:#f6ddd7; font-weight:800; }
 
 @media (max-width:700px) {
   .f-analysis-card{margin-left:0;padding:16px}.f-analysis-head h3{font-size:17px}.f-signal-list>div{grid-template-columns:1fr;gap:4px}.f-signal-list p{white-space:normal}.f-final-rule{grid-template-columns:1fr auto}.f-final-rule em{grid-column:1/-1}

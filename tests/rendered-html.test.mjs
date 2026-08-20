@@ -61,3 +61,15 @@ test("keeps document parsing local and supports the advertised formats", async (
   assert.match(experience, /ReadMinder 讀到這些期限線索/);
   assert.match(experience, /\.pdf,\.csv,\.xlsx,\.xls,\.docx,\.txt,\.json,\.md/);
 });
+
+test("sends confirmation email through a server-side secret", async () => {
+  const [emailModule, exampleEnv] = await Promise.all([
+    readFile(new URL("../app/resend-email.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(emailModule, /https:\/\/api\.resend\.com\/emails/);
+  assert.match(emailModule, /runtime\.RESEND_API_KEY/);
+  assert.match(exampleEnv, /RESEND_API_KEY=\n/);
+  assert.doesNotMatch(emailModule, /re_[A-Za-z0-9_-]{30,}/);
+});

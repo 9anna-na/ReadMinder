@@ -39,8 +39,8 @@ const content = {
       empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
     },
     remindBefore: "提前多久提醒", days: "天", recipientEmail: "提醒要寄到哪個 Email？", emailPlaceholder: "you@example.com",
-    emailConsent: "按下儲存即同意 ReadMinder 僅將此 Email 用於這筆提醒。", saving: "正在安全儲存…", saved: "已儲存到雲端 ✓",
-    savedNote: "提醒規則已安全保存。Email 寄送會在下一階段連接寄信服務後啟用。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
+    emailConsent: "按下儲存即同意 ReadMinder 僅將此 Email 用於這筆提醒。", testMode: "測試模式目前只能寄到你註冊 Resend 的信箱。", saving: "正在安全儲存…", saved: "已儲存到雲端 ✓", sent: "確認信已寄出 ✓",
+    sentNote: "提醒規則已保存，設定確認信也已寄出。請到收件匣看看！", pendingNote: "提醒已保存，但確認信未寄出；測試模式請使用你註冊 Resend 的信箱。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
   },
   en: {
     lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in",
@@ -73,8 +73,8 @@ const content = {
       empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
     },
     remindBefore: "Remind me before", days: "days", recipientEmail: "Which email should receive the reminder?", emailPlaceholder: "you@example.com",
-    emailConsent: "By saving, you agree that ReadMinder may use this email only for this reminder.", saving: "Saving securely…", saved: "Saved to the cloud ✓",
-    savedNote: "Your reminder rule is safely stored. Email delivery will activate after the sending service is connected.", saveError: "We couldn't save this reminder. Check that you're signed in and try again.",
+    emailConsent: "By saving, you agree that ReadMinder may use this email only for this reminder.", testMode: "Test mode can currently send only to the email registered with your Resend account.", saving: "Saving securely…", saved: "Saved to the cloud ✓", sent: "Confirmation sent ✓",
+    sentNote: "Your reminder rule is saved and its confirmation email has been sent. Check your inbox!", pendingNote: "Your reminder is saved, but confirmation could not be sent. In test mode, use your Resend account email.", saveError: "We couldn't save this reminder. Check that you're signed in and try again.",
   },
 } as const;
 
@@ -107,6 +107,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   const [leadDays, setLeadDays] = useState(7);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [saved, setSaved] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -148,9 +149,11 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
       const response = await fetch("/api/reminders", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topic, source, format, delivery, leadDays, recipientEmail, primaryDate: analysis?.primaryDate ?? "", analysis }),
+        body: JSON.stringify({ topic, source, format, delivery, leadDays, recipientEmail, primaryDate: analysis?.primaryDate ?? "", analysis, locale }),
       });
       if (!response.ok) throw new Error("save failed");
+      const result = await response.json() as { reminder?: { confirmationSent?: boolean } };
+      setConfirmationSent(Boolean(result.reminder?.confirmationSent));
       setSaved(true);
     } catch {
       setSaveError(t.saveError);
@@ -158,7 +161,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
       setSaving(false);
     }
   }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setRecipientEmail(""); setSaved(false); setSaving(false); setSaveError(""); }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setFormat(""); setDelivery(""); setAnalysis(null); setAnalysisError(""); setLeadDays(7); setRecipientEmail(""); setSaved(false); setConfirmationSent(false); setSaving(false); setSaveError(""); }
 
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
@@ -205,7 +208,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
           <div className="f-choices">{formats[locale].map((item) => <button key={item.label} onClick={() => { setFormat(item.label); window.setTimeout(() => setStep(4), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>→</em></button>)}</div>
         </>}
         {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} disabled={!item.available} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>{item.available ? "→" : "○"}</em></button>)}</div>}
-        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small></label><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !recipientEmail.includes("@") || !recipientEmail.includes(".")} onClick={saveReminder}>{saved ? t.saved : saving ? t.saving : t.activate} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <p className="f-saved-note">{t.savedNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
+        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div>{analysis?.primaryDate && <div className="f-final-rule"><span>{t.remindBefore}</span><b>{analysis.primaryDate}</b><em>− {leadDays} {t.days}</em></div>}<div className="f-summary">{[topic, source, format, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small><small className="f-test-mode">◎ {t.testMode}</small></label><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !recipientEmail.includes("@") || !recipientEmail.includes(".")} onClick={saveReminder}>{saved ? confirmationSent ? t.sent : t.saved : saving ? t.saving : t.activate} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <p className="f-saved-note">{confirmationSent ? t.sentNote : t.pendingNote}</p>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
       </div>
       {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
     </section><Footer />

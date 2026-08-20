@@ -1,5 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { sendReminderConfirmation } from "../../resend-email";
 import { ensureReminderSchema, getDb } from "../../../db";
 import { reminders } from "../../../db/schema";
 
@@ -28,7 +29,7 @@ export async function GET() {
     status: reminders.status,
     createdAt: reminders.createdAt,
   }).from(reminders)
-    .where(and(eq(reminders.ownerId, user.userId), eq(reminders.status, "draft")))
+    .where(eq(reminders.ownerId, user.userId))
     .orderBy(desc(reminders.createdAt))
     .limit(50);
 
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
     const recipientEmail = clean(payload.recipientEmail, 254).toLowerCase();
     const primaryDate = clean(payload.primaryDate, 10);
     const leadDays = Number(payload.leadDays);
+    const locale = payload.locale === "en" ? "en" : "zh";
 
     if (!topic || !source || !reminderFormat || delivery !== "Email") {
       return Response.json({ error: "Reminder details are incomplete." }, { status: 400 });
@@ -64,7 +66,8 @@ export async function POST(request: Request) {
     const id = crypto.randomUUID();
 
     await ensureReminderSchema();
-    await getDb().insert(reminders).values({
+    const db = getDb();
+    await db.insert(reminders).values({
       id,
       ownerId: user.userId,
       recipientEmail,
@@ -78,7 +81,11 @@ export async function POST(request: Request) {
       status: "draft",
     });
 
-    return Response.json({ reminder: { id, status: "draft", recipientEmail } }, { status: 201 });
+    const email = await sendReminderConfirmation({ id, leadDays, locale, primaryDate, recipientEmail, source, topic });
+    const status = email.sent ? "confirmation_sent" : "email_failed";
+    await db.update(reminders).set({ status, updatedAt: new Date().toISOString() }).where(eq(reminders.id, id));
+
+    return Response.json({ reminder: { id, status, recipientEmail, confirmationSent: email.sent } }, { status: 201 });
   } catch {
     return Response.json({ error: "The reminder could not be saved." }, { status: 500 });
   }
