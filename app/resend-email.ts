@@ -98,3 +98,15 @@ export async function sendReminderConfirmation(input: ReminderEmailInput, schedu
 export async function scheduleReminderEmail(input: ReminderEmailInput, scheduledAt: string) {
   return sendEmail(input, buildScheduledReminderEmail(input), "scheduled_reminder", scheduledAt);
 }
+
+export async function cancelScheduledReminderEmail(emailId: string) {
+  const runtime = env as unknown as ResendRuntimeEnv;
+  if (!runtime.RESEND_API_KEY || !emailId) return { cancelled: false, status: 0 };
+
+  const response = await fetch(`https://api.resend.com/emails/${encodeURIComponent(emailId)}/cancel`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${runtime.RESEND_API_KEY}` },
+  });
+
+  return { cancelled: response.ok, status: response.status };
+}

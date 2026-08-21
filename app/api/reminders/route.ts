@@ -1,7 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { planReminderSchedule } from "../../reminder-schedule";
-import { scheduleReminderEmail, sendReminderConfirmation } from "../../resend-email";
+import { cancelScheduledReminderEmail, scheduleReminderEmail, sendReminderConfirmation } from "../../resend-email";
 import { ensureReminderSchema, getDb } from "../../../db";
 import { reminders } from "../../../db/schema";
 
@@ -141,5 +141,99 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch {
     return Response.json({ error: "The reminder could not be saved." }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "Sign in is required." }, { status: 401 });
+
+  try {
+    const payload = await request.json() as Record<string, unknown>;
+    const id = clean(payload.id, 80);
+    const primaryDate = clean(payload.primaryDate, 10);
+    const leadDays = Number(payload.leadDays);
+    if (!id || !primaryDate || !allowedLeadDays.has(leadDays)) {
+      return Response.json({ error: "Reminder details are incomplete." }, { status: 400 });
+    }
+
+    await ensureReminderSchema();
+    const db = getDb();
+    const [existing] = await db.select().from(reminders)
+      .where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)))
+      .limit(1);
+    if (!existing) return Response.json({ error: "Reminder not found." }, { status: 404 });
+
+    if (existing.scheduledEmailId && Date.parse(existing.scheduledFor) > Date.now()) {
+      const cancellation = await cancelScheduledReminderEmail(existing.scheduledEmailId);
+      if (!cancellation.cancelled && cancellation.status !== 404) {
+        return Response.json({ error: "The existing scheduled email could not be cancelled." }, { status: 502 });
+      }
+    }
+
+    const schedule = planReminderSchedule(primaryDate, leadDays);
+    const scheduledEmail = schedule.status === "scheduled"
+      ? await scheduleReminderEmail({
+        id: `${id}-rescheduled-${Date.now()}`,
+        leadDays,
+        locale: existing.locale === "en" ? "en" : "zh",
+        primaryDate,
+        recipientEmail: existing.recipientEmail,
+        source: existing.source,
+        topic: existing.topic,
+      }, schedule.scheduledAt)
+      : { sent: false, providerId: "" };
+    const scheduledFor = scheduledEmail.sent && schedule.status === "scheduled" ? schedule.scheduledAt : "";
+    const status = scheduledFor
+      ? "scheduled"
+      : schedule.status === "outside-window"
+        ? "awaiting_schedule_window"
+        : schedule.status === "past" || schedule.status === "invalid-date" || schedule.status === "missing-date"
+          ? "needs_date_review"
+          : "schedule_failed";
+
+    await db.update(reminders).set({
+      leadDays,
+      primaryDate,
+      scheduledFor,
+      scheduledEmailId: scheduledEmail.providerId ?? "",
+      status,
+      updatedAt: new Date().toISOString(),
+    }).where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)));
+
+    return Response.json({ reminder: { id, leadDays, primaryDate, scheduledFor, status } });
+  } catch {
+    return Response.json({ error: "The reminder could not be updated." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "Sign in is required." }, { status: 401 });
+
+  try {
+    const id = clean(new URL(request.url).searchParams.get("id"), 80);
+    if (!id) return Response.json({ error: "Reminder id is required." }, { status: 400 });
+
+    await ensureReminderSchema();
+    const db = getDb();
+    const [existing] = await db.select().from(reminders)
+      .where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)))
+      .limit(1);
+    if (!existing) return Response.json({ error: "Reminder not found." }, { status: 404 });
+
+    let cancelled = false;
+    if (existing.scheduledEmailId && Date.parse(existing.scheduledFor) > Date.now()) {
+      const cancellation = await cancelScheduledReminderEmail(existing.scheduledEmailId);
+      if (!cancellation.cancelled && cancellation.status !== 404) {
+        return Response.json({ error: "The scheduled email could not be cancelled." }, { status: 502 });
+      }
+      cancelled = cancellation.cancelled;
+    }
+
+    await db.delete(reminders).where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)));
+    return Response.json({ deleted: true, cancelled });
+  } catch {
+    return Response.json({ error: "The reminder could not be deleted." }, { status: 500 });
   }
 }

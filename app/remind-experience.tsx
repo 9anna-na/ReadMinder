@@ -10,7 +10,7 @@ type DateRule = { date: string; leadDays: number };
 
 const content = {
   zh: {
-    lang: "EN", langHref: "/en", homeLabel: "ReadMinder 首頁", login: "登入",
+    lang: "EN", langHref: "/en", homeLabel: "ReadMinder 首頁", login: "登入", manage: "我的提醒", manageHref: "/reminders",
     badge: "✦ 個人化提醒設定 ✦", heroTop: "重要的事，", heroEm: "不再錯過",
     intro: "回答幾個問題、提供資料，ReadMinder 會讀懂文件中的重要日期，替你建立專屬提醒。",
     cta: "建立我的提醒", free: "免費 · 不需註冊",
@@ -45,7 +45,7 @@ const content = {
     scheduledNote: "已排定的自動提醒：", partialNote: "部分提醒已排定；其餘日期超過 30 天，目前只會保存、不會自動寄出。", reviewNote: "提醒已儲存，但所選日期目前無法自動排定；請選擇有效的未來日期。", waitingNote: "提醒已儲存，但寄送時間超過 30 天，目前尚未排程。", pendingNote: "提醒已保存，但確認信未寄出；測試模式請使用你註冊 Resend 的信箱。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
   },
   en: {
-    lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in",
+    lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in", manage: "My reminders", manageHref: "/en/reminders",
     badge: "✦ PERSONALISED REMINDER SETUP ✦", heroTop: "Never miss what", heroEm: "matters most",
     intro: "Answer a few questions, upload your data, and ReadMinder turns important dates into tailored reminders.",
     cta: "Build my reminder", free: "Free · No sign-up needed",
@@ -183,7 +183,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   if (screen === "landing") return <main className={`f-landing f-${locale}`}>
     <header className="f-landing-header">
       <a className="f-brand" href="#top" aria-label={t.homeLabel}><span className="f-brand-mark">R</span><span>ReadMinder</span></a>
-      <div className="f-header-actions"><a href={t.langHref}>{t.lang}</a><button className="f-header-cta" onClick={() => window.alert(t.loginSoon)}>{t.login} <span>→</span></button></div>
+      <div className="f-header-actions"><a href={t.manageHref}>{t.manage}</a><a href={t.langHref}>{t.lang}</a><button className="f-header-cta" onClick={() => window.alert(t.loginSoon)}>{t.login} <span>→</span></button></div>
     </header>
     <div className="f-stitch" aria-hidden="true">{Array.from({ length: 14 }).map((_, i) => <span key={i} />)}</div>
     <section className="f-hero" id="top">
@@ -197,7 +197,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   return <main className={`f-builder f-${locale}`}>
     <header className="f-builder-header">
       <button className="f-brand f-brand-button" onClick={() => setScreen("landing")} aria-label={locale === "en" ? "Back to home" : "回到首頁"}><span className="f-brand-mark">R</span><span className="f-brand-copy"><b>ReadMinder</b><small>{t.subtitle}</small></span></button>
-      <div className="f-builder-actions"><a href={t.langHref}>{t.lang}</a><button onClick={() => window.alert(t.loginSoon)}>{t.login}</button><span className="f-setup-tag">{t.setup}</span></div>
+      <div className="f-builder-actions"><a href={t.manageHref}>{t.manage}</a><a href={t.langHref}>{t.lang}</a><button onClick={() => window.alert(t.loginSoon)}>{t.login}</button><span className="f-setup-tag">{t.setup}</span></div>
     </header>
     <section className="f-chat-card" aria-live="polite">
       <div className="f-progress"><div><b>{step >= 5 ? t.complete : `STEP ${step} OF 4`}</b><span>{progress}%</span></div><i><span style={{ width: `${progress}%` }} /></i></div>

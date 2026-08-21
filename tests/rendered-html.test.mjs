@@ -47,6 +47,17 @@ test("server-renders the matching English experience", async () => {
   assert.match(html, /href="\/"/);
 });
 
+test("server-renders the bilingual reminder management routes", async () => {
+  const [zhResponse, enResponse] = await Promise.all([render("/reminders"), render("/en/reminders")]);
+
+  assert.equal(zhResponse.status, 200);
+  assert.equal(enResponse.status, 200);
+
+  const [zhHtml, enHtml] = await Promise.all([zhResponse.text(), enResponse.text()]);
+  assert.match(zhHtml, /正在整理你的提醒/);
+  assert.match(enHtml, /Organising your reminders/);
+});
+
 test("keeps document parsing local and supports the advertised formats", async () => {
   const [reader, experience, pdfModule, pdfWorker] = await Promise.all([
     readFile(new URL("../app/file-readers.ts", import.meta.url), "utf8"),
@@ -102,4 +113,21 @@ test("supports multiple date rules without duplicate cadence choices", async () 
   assert.match(experience, /reminders: dateRules/);
   assert.match(reminderRoute, /for \(const rule of reminderRules\)/);
   assert.match(reminderRoute, /scheduledItems/);
+});
+
+test("manages reminders safely for the signed-in owner", async () => {
+  const [manager, reminderRoute, emailModule] = await Promise.all([
+    readFile(new URL("../app/reminder-manager.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/reminders/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/resend-email.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(manager, /fetch\("\/api\/reminders"/);
+  assert.match(manager, /method: "PATCH"/);
+  assert.match(manager, /method: "DELETE"/);
+  assert.match(reminderRoute, /export async function PATCH/);
+  assert.match(reminderRoute, /export async function DELETE/);
+  assert.match(reminderRoute, /and\(eq\(reminders\.id, id\), eq\(reminders\.ownerId, user\.userId\)\)/);
+  assert.match(emailModule, /cancelScheduledReminderEmail/);
+  assert.match(emailModule, /emails\/\$\{encodeURIComponent\(emailId\)\}\/cancel/);
 });
