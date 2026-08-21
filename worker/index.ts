@@ -19,6 +19,11 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+interface CronController {
+  cron: string;
+  scheduledTime: number;
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -41,6 +46,11 @@ const worker = {
     }
 
     return handler.fetch(request, env, ctx);
+  },
+  async scheduled(controller: CronController): Promise<void> {
+    const { scheduleWaitingReminders } = await import("../app/reminder-scheduler");
+    const result = await scheduleWaitingReminders(new Date(controller.scheduledTime));
+    console.log("ReadMinder daily scheduling check", { cron: controller.cron, ...result });
   },
 };
 

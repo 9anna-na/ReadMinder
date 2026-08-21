@@ -18,6 +18,7 @@ Most reminder tools expect users to manually enter every date. ReadMinder explor
 - Email recipient setup with explicit consent
 - Resend-powered confirmation email after a reminder is saved
 - Scheduled email reminders for dates within the provider's scheduling window
+- Daily automatic scheduling for saved reminders as they enter that window
 - Reminder dashboard with filters, timing edits, pause/resume, and safe deletion
 - Sample contract for trying the complete flow without uploading a file
 
@@ -29,16 +30,14 @@ Document analysis currently runs in the browser, so supported file contents are 
 - Password-protected PDFs and legacy `.doc` files are not supported
 - Large documents are capped at 10 MB and 250,000 extracted characters for browser performance
 - Test-mode confirmation emails can only be sent to the address registered with Resend
-- Far-future reminders are saved, but automatic scheduling when they enter the 30-day window is not enabled yet
 - LINE, Slack, push, and calendar delivery are marked as coming soon
 
 ## Roadmap
 
-1. Automatically schedule far-future reminders when they enter the delivery window
-2. Add reminder delivery activity history
-3. Connect LINE delivery
-4. Add OCR for scanned documents
-5. Connect Google Drive and monitor source changes
+1. Add reminder delivery activity history
+2. Connect LINE delivery
+3. Add OCR for scanned documents
+4. Connect Google Drive and monitor source changes
 
 ## Tech stack
 

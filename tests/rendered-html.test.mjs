@@ -134,3 +134,20 @@ test("manages reminders safely for the signed-in owner", async () => {
   assert.match(emailModule, /cancelScheduledReminderEmail/);
   assert.match(emailModule, /emails\/\$\{encodeURIComponent\(emailId\)\}\/cancel/);
 });
+
+test("checks waiting reminders automatically every day", async () => {
+  const [scheduler, worker, viteConfig, builtConfig] = await Promise.all([
+    readFile(new URL("../app/reminder-scheduler.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../dist/server/wrangler.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(scheduler, /awaiting_schedule_window/);
+  assert.match(scheduler, /planReminderSchedule/);
+  assert.match(scheduler, /scheduleReminderEmail/);
+  assert.match(scheduler, /DAILY_BATCH_LIMIT = 20/);
+  assert.match(worker, /async scheduled\(controller: CronController\)/);
+  assert.match(viteConfig, /triggers: \{ crons: \["15 1 \* \* \*"\] \}/);
+  assert.deepEqual(JSON.parse(builtConfig).triggers.crons, ["15 1 * * *"]);
+});
