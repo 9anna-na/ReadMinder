@@ -125,8 +125,11 @@ test("manages reminders safely for the signed-in owner", async () => {
   assert.match(manager, /fetch\("\/api\/reminders"/);
   assert.match(manager, /method: "PATCH"/);
   assert.match(manager, /method: "DELETE"/);
+  assert.match(manager, /action: reminder\.status === "paused" \? "resume" : "pause"/);
   assert.match(reminderRoute, /export async function PATCH/);
   assert.match(reminderRoute, /export async function DELETE/);
+  assert.match(reminderRoute, /action === "pause"/);
+  assert.match(reminderRoute, /action === "resume"/);
   assert.match(reminderRoute, /and\(eq\(reminders\.id, id\), eq\(reminders\.ownerId, user\.userId\)\)/);
   assert.match(emailModule, /cancelScheduledReminderEmail/);
   assert.match(emailModule, /emails\/\$\{encodeURIComponent\(emailId\)\}\/cancel/);

@@ -15,7 +15,7 @@ type Reminder = {
   status: string;
   createdAt: string;
 };
-type Filter = "all" | "upcoming" | "waiting" | "attention";
+type Filter = "all" | "upcoming" | "waiting" | "paused" | "attention";
 
 const copy = {
   zh: {
@@ -24,11 +24,11 @@ const copy = {
     signIn: "請先登入，才能查看你的提醒。", signInButton: "登入 ReadMinder",
     loadError: "暫時讀不到提醒，請稍後再試。", retry: "重新整理", empty: "目前還沒有提醒",
     emptyCopy: "上傳一份文件，ReadMinder 會替你找出重要日期。", create: "建立第一個提醒",
-    metrics: ["全部提醒", "即將提醒", "等待排程", "需要確認"],
-    filters: { all: "全部", upcoming: "即將提醒", waiting: "等待排程", attention: "需要確認" },
-    status: { scheduled: "已排程", passed: "提醒時間已到", waiting: "等待排程", attention: "需要確認", saved: "已儲存" },
+    metrics: ["全部提醒", "即將提醒", "等待排程", "已暫停", "需要確認"],
+    filters: { all: "全部", upcoming: "即將提醒", waiting: "等待排程", paused: "已暫停", attention: "需要確認" },
+    status: { scheduled: "已排程", passed: "提醒時間已到", waiting: "等待排程", paused: "已暫停", attention: "需要確認", saved: "已儲存" },
     date: "重要日期", lead: "提前提醒", delivery: "通知方式", schedule: "預計寄送", source: "資料來源",
-    days: "天", edit: "修改", remove: "刪除", editTitle: "修改提醒時間", save: "儲存修改", saving: "正在更新…",
+    days: "天", edit: "修改", pause: "暫停", resume: "恢復", pausing: "處理中…", remove: "刪除", editTitle: "修改提醒時間", save: "儲存修改", saving: "正在更新…",
     cancel: "取消", deleteTitle: "刪除這個提醒？", deleteCopy: "這會移除提醒；如果 Email 尚未寄出，也會一併取消排程。",
     confirmDelete: "確認刪除", deleting: "正在刪除…", actionError: "操作失敗，請稍後再試。",
     scheduleUnavailable: "尚未排定", created: "建立於",
@@ -39,11 +39,11 @@ const copy = {
     signIn: "Sign in to view your reminders.", signInButton: "Sign in to ReadMinder",
     loadError: "We couldn't load your reminders. Try again in a moment.", retry: "Try again", empty: "No reminders yet",
     emptyCopy: "Upload a document and ReadMinder will find the important dates for you.", create: "Create your first reminder",
-    metrics: ["All reminders", "Upcoming", "Waiting", "Needs review"],
-    filters: { all: "All", upcoming: "Upcoming", waiting: "Waiting", attention: "Needs review" },
-    status: { scheduled: "Scheduled", passed: "Reminder time reached", waiting: "Waiting", attention: "Needs review", saved: "Saved" },
+    metrics: ["All reminders", "Upcoming", "Waiting", "Paused", "Needs review"],
+    filters: { all: "All", upcoming: "Upcoming", waiting: "Waiting", paused: "Paused", attention: "Needs review" },
+    status: { scheduled: "Scheduled", passed: "Reminder time reached", waiting: "Waiting", paused: "Paused", attention: "Needs review", saved: "Saved" },
     date: "Important date", lead: "Lead time", delivery: "Delivery", schedule: "Scheduled for", source: "Source",
-    days: "days", edit: "Edit", remove: "Delete", editTitle: "Edit reminder timing", save: "Save changes", saving: "Updating…",
+    days: "days", edit: "Edit", pause: "Pause", resume: "Resume", pausing: "Updating…", remove: "Delete", editTitle: "Edit reminder timing", save: "Save changes", saving: "Updating…",
     cancel: "Cancel", deleteTitle: "Delete this reminder?", deleteCopy: "This removes the reminder and cancels its email if it has not been sent yet.",
     confirmDelete: "Delete reminder", deleting: "Deleting…", actionError: "Something went wrong. Please try again.",
     scheduleUnavailable: "Not scheduled yet", created: "Created",
@@ -51,6 +51,7 @@ const copy = {
 } as const;
 
 function category(reminder: Reminder): Exclude<Filter, "all"> | "saved" | "passed" {
+  if (reminder.status === "paused") return "paused";
   if (reminder.scheduledFor) return Date.parse(reminder.scheduledFor) > Date.now() ? "upcoming" : "passed";
   if (reminder.status === "awaiting_schedule_window") return "waiting";
   if (["needs_date_review", "schedule_failed", "partially_scheduled"].includes(reminder.status)) return "attention";
@@ -69,6 +70,7 @@ export default function ReminderManager({ locale = "zh" }: { locale?: Locale }) 
   const [editDate, setEditDate] = useState("");
   const [editLeadDays, setEditLeadDays] = useState(7);
   const [busy, setBusy] = useState(false);
+  const [busyReminderId, setBusyReminderId] = useState("");
   const [actionError, setActionError] = useState("");
 
   async function loadReminders() {
@@ -94,6 +96,7 @@ export default function ReminderManager({ locale = "zh" }: { locale?: Locale }) 
     reminders.length,
     reminders.filter((item) => category(item) === "upcoming").length,
     reminders.filter((item) => category(item) === "waiting").length,
+    reminders.filter((item) => category(item) === "paused").length,
     reminders.filter((item) => category(item) === "attention").length,
   ], [reminders]);
   const visibleReminders = useMemo(() => filter === "all" ? reminders : reminders.filter((item) => category(item) === filter), [filter, reminders]);
@@ -142,11 +145,30 @@ export default function ReminderManager({ locale = "zh" }: { locale?: Locale }) 
     }
   }
 
+  async function togglePause(reminder: Reminder) {
+    setBusyReminderId(reminder.id);
+    setActionError("");
+    try {
+      const response = await fetch("/api/reminders", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: reminder.id, action: reminder.status === "paused" ? "resume" : "pause" }),
+      });
+      if (!response.ok) throw new Error("status update failed");
+      const result = await response.json() as { reminder: Partial<Reminder> & { id: string } };
+      setReminders((items) => items.map((item) => item.id === result.reminder.id ? { ...item, ...result.reminder } : item));
+    } catch {
+      setActionError(t.actionError);
+    } finally {
+      setBusyReminderId("");
+    }
+  }
+
   const formatDate = (value: string) => value ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeZone: "Asia/Taipei" }).format(new Date(`${value}T00:00:00+08:00`)) : "—";
   const formatDateTime = (value: string) => value ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(value)) : t.scheduleUnavailable;
   const statusLabel = (reminder: Reminder) => {
     const value = category(reminder);
-    return value === "upcoming" ? t.status.scheduled : value === "passed" ? t.status.passed : value === "waiting" ? t.status.waiting : value === "attention" ? t.status.attention : t.status.saved;
+    return value === "upcoming" ? t.status.scheduled : value === "passed" ? t.status.passed : value === "waiting" ? t.status.waiting : value === "paused" ? t.status.paused : value === "attention" ? t.status.attention : t.status.saved;
   };
 
   return <main className={`rm-dashboard f-${locale}`}>
@@ -165,7 +187,8 @@ export default function ReminderManager({ locale = "zh" }: { locale?: Locale }) 
         : loadError ? <section className="rm-state"><span>!</span><h2>{loadError}</h2><button onClick={() => void loadReminders()}>{t.retry}</button></section>
           : reminders.length === 0 ? <section className="rm-state"><span>✦</span><h2>{t.empty}</h2><p>{t.emptyCopy}</p><a href={locale === "en" ? "/en" : "/"}>{t.create} →</a></section>
             : <>
-              <div className="rm-filters">{(Object.keys(t.filters) as Filter[]).map((key) => <button className={filter === key ? "is-active" : ""} onClick={() => setFilter(key)} key={key}>{t.filters[key]}<span>{key === "all" ? metrics[0] : key === "upcoming" ? metrics[1] : key === "waiting" ? metrics[2] : metrics[3]}</span></button>)}</div>
+              <div className="rm-filters">{(Object.keys(t.filters) as Filter[]).map((key, index) => <button className={filter === key ? "is-active" : ""} onClick={() => setFilter(key)} key={key}>{t.filters[key]}<span>{metrics[index]}</span></button>)}</div>
+              {actionError && !editing && !deleting && <p className="rm-inline-error" role="alert">{actionError}</p>}
               <section className="rm-list">{visibleReminders.map((reminder) => <article className="rm-card" key={reminder.id}>
                 <div className="rm-card-head"><div><span className={`rm-status is-${category(reminder)}`}>{statusLabel(reminder)}</span><h2>{reminder.topic}</h2></div><b className="rm-date">{formatDate(reminder.primaryDate)}</b></div>
                 <div className="rm-details">
@@ -175,7 +198,7 @@ export default function ReminderManager({ locale = "zh" }: { locale?: Locale }) 
                   <div><span>{t.schedule}</span><b>{formatDateTime(reminder.scheduledFor)}</b></div>
                 </div>
                 <p className="rm-source"><span>{t.source}</span>{reminder.source}</p>
-                <footer><small>{t.created} {formatDate(reminder.createdAt.slice(0, 10))}</small><div><button onClick={() => openEdit(reminder)}>{t.edit}</button><button className="is-delete" onClick={() => { setDeleting(reminder); setActionError(""); }}>{t.remove}</button></div></footer>
+                <footer><small>{t.created} {formatDate(reminder.createdAt.slice(0, 10))}</small><div><button onClick={() => openEdit(reminder)}>{t.edit}</button><button className="is-pause" disabled={busyReminderId === reminder.id} onClick={() => void togglePause(reminder)}>{busyReminderId === reminder.id ? t.pausing : reminder.status === "paused" ? t.resume : t.pause}</button><button className="is-delete" onClick={() => { setDeleting(reminder); setActionError(""); }}>{t.remove}</button></div></footer>
               </article>)}</section>
               {!visibleReminders.length && <section className="rm-state rm-filter-empty"><p>{t.empty}</p></section>}
             </>}

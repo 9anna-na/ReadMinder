@@ -151,9 +151,11 @@ export async function PATCH(request: Request) {
   try {
     const payload = await request.json() as Record<string, unknown>;
     const id = clean(payload.id, 80);
+    const action = clean(payload.action, 16);
     const primaryDate = clean(payload.primaryDate, 10);
     const leadDays = Number(payload.leadDays);
-    if (!id || !primaryDate || !allowedLeadDays.has(leadDays)) {
+    const isStatusAction = action === "pause" || action === "resume";
+    if (!id || (!isStatusAction && (!primaryDate || !allowedLeadDays.has(leadDays)))) {
       return Response.json({ error: "Reminder details are incomplete." }, { status: 400 });
     }
 
@@ -163,6 +165,67 @@ export async function PATCH(request: Request) {
       .where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)))
       .limit(1);
     if (!existing) return Response.json({ error: "Reminder not found." }, { status: 404 });
+
+    if (action === "pause") {
+      if (existing.status === "paused") {
+        return Response.json({ reminder: { id, scheduledFor: "", status: "paused" } });
+      }
+      if (existing.scheduledEmailId && Date.parse(existing.scheduledFor) > Date.now()) {
+        const cancellation = await cancelScheduledReminderEmail(existing.scheduledEmailId);
+        if (!cancellation.cancelled && cancellation.status !== 404) {
+          return Response.json({ error: "The scheduled email could not be paused." }, { status: 502 });
+        }
+      }
+      await db.update(reminders).set({
+        scheduledFor: "",
+        scheduledEmailId: "",
+        status: "paused",
+        updatedAt: new Date().toISOString(),
+      }).where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)));
+      return Response.json({ reminder: { id, scheduledFor: "", status: "paused" } });
+    }
+
+    if (action === "resume") {
+      if (existing.status !== "paused") {
+        return Response.json({ error: "Only paused reminders can be resumed." }, { status: 409 });
+      }
+      const resumeSchedule = planReminderSchedule(existing.primaryDate, existing.leadDays);
+      const resumedEmail = resumeSchedule.status === "scheduled"
+        ? await scheduleReminderEmail({
+          id: `${id}-resumed-${Date.now()}`,
+          leadDays: existing.leadDays,
+          locale: existing.locale === "en" ? "en" : "zh",
+          primaryDate: existing.primaryDate,
+          recipientEmail: existing.recipientEmail,
+          source: existing.source,
+          topic: existing.topic,
+        }, resumeSchedule.scheduledAt)
+        : { sent: false, providerId: "" };
+      const resumedFor = resumedEmail.sent && resumeSchedule.status === "scheduled" ? resumeSchedule.scheduledAt : "";
+      const resumedStatus = resumedFor
+        ? "scheduled"
+        : resumeSchedule.status === "outside-window"
+          ? "awaiting_schedule_window"
+          : resumeSchedule.status === "past" || resumeSchedule.status === "invalid-date" || resumeSchedule.status === "missing-date"
+            ? "needs_date_review"
+            : "schedule_failed";
+      await db.update(reminders).set({
+        scheduledFor: resumedFor,
+        scheduledEmailId: resumedEmail.providerId ?? "",
+        status: resumedStatus,
+        updatedAt: new Date().toISOString(),
+      }).where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)));
+      return Response.json({ reminder: { id, scheduledFor: resumedFor, status: resumedStatus } });
+    }
+
+    if (existing.status === "paused") {
+      await db.update(reminders).set({
+        leadDays,
+        primaryDate,
+        updatedAt: new Date().toISOString(),
+      }).where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)));
+      return Response.json({ reminder: { id, leadDays, primaryDate, scheduledFor: "", status: "paused" } });
+    }
 
     if (existing.scheduledEmailId && Date.parse(existing.scheduledFor) > Date.now()) {
       const cancellation = await cancelScheduledReminderEmail(existing.scheduledEmailId);
