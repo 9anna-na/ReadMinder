@@ -23,6 +23,46 @@ async function render(pathname = "/") {
   );
 }
 
+test("accepts valid platform identity headers and rejects malformed values", async () => {
+  const { parseAuthenticatedUserHeaders } = await import("../app/authenticated-user.ts");
+  const validHeaders = new Headers({
+    "oai-authenticated-user-id": "user-123",
+    "oai-authenticated-user-email": "reader@example.com",
+    "oai-authenticated-user-full-name": "Joanna%20Lee",
+    "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
+  });
+  assert.deepEqual(parseAuthenticatedUserHeaders(validHeaders), {
+    userId: "user-123",
+    displayName: "Joanna Lee",
+    email: "reader@example.com",
+    fullName: "Joanna Lee",
+  });
+
+  const malformedHeaders = [
+    new Headers(),
+    new Headers({ "oai-authenticated-user-id": "user-123" }),
+    new Headers({
+      "oai-authenticated-user-id": "x".repeat(201),
+      "oai-authenticated-user-email": "reader@example.com",
+    }),
+    new Headers({
+      "oai-authenticated-user-id": "user-123",
+      "oai-authenticated-user-email": "not-an-email",
+    }),
+  ];
+  for (const headers of malformedHeaders) {
+    assert.equal(parseAuthenticatedUserHeaders(headers), null);
+  }
+
+  const reminderRoute = await readFile(new URL("../app/api/reminders/route.ts", import.meta.url), "utf8");
+  for (const handler of ["GET", "POST", "PATCH", "DELETE"]) {
+    const start = reminderRoute.indexOf(`export async function ${handler}`);
+    const nextHandler = reminderRoute.indexOf("export async function ", start + 1);
+    const source = reminderRoute.slice(start, nextHandler === -1 ? undefined : nextHandler);
+    assert.ok(source.indexOf("await getChatGPTUser()") < source.indexOf("await ensureReminderSchema()"));
+  }
+});
+
 test("server-renders the Traditional Chinese ReadMinder landing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -32,7 +72,7 @@ test("server-renders the Traditional Chinese ReadMinder landing page", async () 
   assert.match(html, /<html lang="zh-Hant">/);
   assert.match(html, /ReadMinder｜讀懂重要日期，準時提醒你/);
   assert.match(html, /建立我的提醒/);
-  assert.match(html, /匯入任何來源/);
+  assert.match(html, /匯入支援的資料/);
   assert.match(html, /href="\/en"/);
 });
 
@@ -43,7 +83,7 @@ test("server-renders the matching English experience", async () => {
   const html = await response.text();
   assert.match(html, /Never miss what/);
   assert.match(html, /Build my reminder/);
-  assert.match(html, /Import any source/);
+  assert.match(html, /Import supported data/);
   assert.match(html, /href="\/"/);
 });
 
@@ -76,6 +116,8 @@ test("keeps document parsing local and supports the advertised formats", async (
   assert.match(experience, /目前在你的瀏覽器內分析，不會上傳文件內容/);
   assert.match(experience, /ReadMinder 讀到這些期限線索/);
   assert.match(experience, /\.pdf,\.csv,\.xlsx,\.xls,\.docx,\.txt,\.json,\.md/);
+  assert.match(experience, /paste text containing dates/);
+  assert.doesNotMatch(experience, /paste a link|貼上連結|docs\.google\.com/);
 });
 
 test("sends confirmation email through a server-side secret", async () => {
