@@ -233,6 +233,57 @@ test("checks waiting reminders automatically every day", async () => {
   assert.match(scheduler, /scheduleReminderEmail/);
   assert.match(scheduler, /DAILY_BATCH_LIMIT = 20/);
   assert.match(worker, /async scheduled\(controller: CronController\)/);
-  assert.match(viteConfig, /triggers: \{ crons: \["15 1 \* \* \*"\] \}/);
-  assert.deepEqual(JSON.parse(builtConfig).triggers.crons, ["15 1 * * *"]);
+  assert.match(viteConfig, /triggers: \{ crons: \["0 1 \* \* \*"\] \}/);
+  assert.deepEqual(JSON.parse(builtConfig).triggers.crons, ["0 1 * * *"]);
+});
+
+test("supports secure LINE account linking and scheduled push delivery", async () => {
+  const [{ verifyLineSignature }, { planLineReminderSchedule }, experience, webhook, messaging, scheduler, worker, schema, exampleEnv] = await Promise.all([
+    import("../app/line-signature.ts"),
+    import("../app/reminder-schedule.ts"),
+    readFile(new URL("../app/remind-experience.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/line/webhook/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/line-messaging.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/reminder-scheduler.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+
+  const body = JSON.stringify({ events: [] });
+  const secret = "test-channel-secret";
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = Buffer.from(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body))).toString("base64");
+  assert.equal(await verifyLineSignature(body, signature, secret), true);
+  assert.equal(await verifyLineSignature(`${body} `, signature, secret), false);
+
+  assert.deepEqual(planLineReminderSchedule("2027-04-30", 30, new Date("2026-09-12T00:00:00.000Z")), {
+    status: "scheduled",
+    scheduledAt: "2027-03-31T01:00:00.000Z",
+  });
+  assert.match(experience, /label: "LINE"[\s\S]*available: true/);
+  assert.match(experience, /\/api\/line\/connect/);
+  assert.match(webhook, /x-line-signature/);
+  assert.match(webhook, /verifyLineSignature/);
+  assert.match(messaging, /api\.line\.me\/v2\/bot\/message\/\$\{endpoint\}/);
+  assert.match(messaging, /return send\("push"/);
+  assert.match(scheduler, /deliverDueLineReminders/);
+  assert.match(worker, /deliverDueLineReminders/);
+  assert.match(schema, /lineConnections/);
+  assert.match(schema, /recipientLineUserId/);
+  for (const keyName of [
+    "LINE_CHANNEL_ACCESS_TOKEN",
+    "LINE_CHANNEL_SECRET",
+    "LINE_OFFICIAL_ACCOUNT_ID",
+    "LINE_RECIPIENT_USER_ID",
+    "LINE_RECIPIENT_EMAIL",
+  ]) {
+    assert.match(exampleEnv, new RegExp(`${keyName}=`));
+  }
 });

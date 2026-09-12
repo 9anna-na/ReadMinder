@@ -26,10 +26,10 @@ const copy = {
     emptyCopy: "上傳一份文件，ReadMinder 會替你找出重要日期。", create: "建立第一個提醒",
     metrics: ["全部提醒", "即將提醒", "等待排程", "已暫停", "需要確認"],
     filters: { all: "全部", upcoming: "即將提醒", waiting: "等待排程", paused: "已暫停", attention: "需要確認" },
-    status: { scheduled: "已排程", passed: "提醒時間已到", waiting: "等待排程", paused: "已暫停", attention: "需要確認", saved: "已儲存" },
-    date: "重要日期", lead: "提前提醒", delivery: "通知方式", schedule: "預計寄送", source: "資料來源",
+    status: { scheduled: "已排程", delivered: "已傳送", passed: "提醒時間已到", waiting: "等待排程", paused: "已暫停", attention: "需要確認", saved: "已儲存" },
+    date: "重要日期", lead: "提前提醒", delivery: "通知方式", schedule: "預計通知", source: "資料來源",
     days: "天", edit: "修改", pause: "暫停", resume: "恢復", pausing: "處理中…", remove: "刪除", editTitle: "修改提醒時間", save: "儲存修改", saving: "正在更新…",
-    cancel: "取消", deleteTitle: "刪除這個提醒？", deleteCopy: "這會移除提醒；如果 Email 尚未寄出，也會一併取消排程。",
+    cancel: "取消", deleteTitle: "刪除這個提醒？", deleteCopy: "這會移除提醒，尚未傳送的通知也會一併取消。",
     confirmDelete: "確認刪除", deleting: "正在刪除…", actionError: "操作失敗，請稍後再試。",
     scheduleUnavailable: "尚未排定", created: "建立於",
   },
@@ -41,10 +41,10 @@ const copy = {
     emptyCopy: "Upload a document and ReadMinder will find the important dates for you.", create: "Create your first reminder",
     metrics: ["All reminders", "Upcoming", "Waiting", "Paused", "Needs review"],
     filters: { all: "All", upcoming: "Upcoming", waiting: "Waiting", paused: "Paused", attention: "Needs review" },
-    status: { scheduled: "Scheduled", passed: "Reminder time reached", waiting: "Waiting", paused: "Paused", attention: "Needs review", saved: "Saved" },
+    status: { scheduled: "Scheduled", delivered: "Delivered", passed: "Reminder time reached", waiting: "Waiting", paused: "Paused", attention: "Needs review", saved: "Saved" },
     date: "Important date", lead: "Lead time", delivery: "Delivery", schedule: "Scheduled for", source: "Source",
     days: "days", edit: "Edit", pause: "Pause", resume: "Resume", pausing: "Updating…", remove: "Delete", editTitle: "Edit reminder timing", save: "Save changes", saving: "Updating…",
-    cancel: "Cancel", deleteTitle: "Delete this reminder?", deleteCopy: "This removes the reminder and cancels its email if it has not been sent yet.",
+    cancel: "Cancel", deleteTitle: "Delete this reminder?", deleteCopy: "This removes the reminder and cancels any notification that has not been sent yet.",
     confirmDelete: "Delete reminder", deleting: "Deleting…", actionError: "Something went wrong. Please try again.",
     scheduleUnavailable: "Not scheduled yet", created: "Created",
   },
@@ -54,7 +54,7 @@ function category(reminder: Reminder): Exclude<Filter, "all"> | "saved" | "passe
   if (reminder.status === "paused") return "paused";
   if (reminder.scheduledFor) return Date.parse(reminder.scheduledFor) > Date.now() ? "upcoming" : "passed";
   if (reminder.status === "awaiting_schedule_window") return "waiting";
-  if (["needs_date_review", "schedule_failed", "partially_scheduled"].includes(reminder.status)) return "attention";
+  if (["needs_date_review", "schedule_failed", "partially_scheduled", "line_delivery_failed"].includes(reminder.status)) return "attention";
   return "saved";
 }
 
@@ -167,6 +167,7 @@ export default function ReminderManager({ locale = "zh" }: { locale?: Locale }) 
   const formatDate = (value: string) => value ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeZone: "Asia/Taipei" }).format(new Date(`${value}T00:00:00+08:00`)) : "—";
   const formatDateTime = (value: string) => value ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(value)) : t.scheduleUnavailable;
   const statusLabel = (reminder: Reminder) => {
+    if (reminder.status === "delivered") return t.status.delivered;
     const value = category(reminder);
     return value === "upcoming" ? t.status.scheduled : value === "passed" ? t.status.passed : value === "waiting" ? t.status.waiting : value === "paused" ? t.status.paused : value === "attention" ? t.status.attention : t.status.saved;
   };

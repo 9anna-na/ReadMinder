@@ -48,9 +48,13 @@ const worker = {
     return handler.fetch(request, env, ctx);
   },
   async scheduled(controller: CronController): Promise<void> {
-    const { scheduleWaitingReminders } = await import("../app/reminder-scheduler");
-    const result = await scheduleWaitingReminders(new Date(controller.scheduledTime));
-    console.log("ReadMinder daily scheduling check", { cron: controller.cron, ...result });
+    const { deliverDueLineReminders, scheduleWaitingReminders } = await import("../app/reminder-scheduler");
+    const now = new Date(controller.scheduledTime);
+    const [emailScheduling, lineDelivery] = await Promise.all([
+      scheduleWaitingReminders(now),
+      deliverDueLineReminders(now),
+    ]);
+    console.log("ReadMinder daily reminder check", { cron: controller.cron, emailScheduling, lineDelivery });
   },
 };
 

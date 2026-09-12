@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { ensureReminderSchema, getDb } from "../db";
 import { reminders } from "../db/schema";
 import { planReminderSchedule } from "./reminder-schedule";
 import { scheduleReminderEmail } from "./resend-email";
+import { sendLineReminder } from "./line-messaging";
 
 const DAILY_BATCH_LIMIT = 20;
 
@@ -11,6 +12,12 @@ export type SchedulerResult = {
   scheduled: number;
   needsReview: number;
   waiting: number;
+};
+
+export type LineDeliveryResult = {
+  checked: number;
+  delivered: number;
+  failed: number;
 };
 
 export async function scheduleWaitingReminders(now = new Date()): Promise<SchedulerResult> {
@@ -57,6 +64,46 @@ export async function scheduleWaitingReminders(now = new Date()): Promise<Schedu
       updatedAt: now.toISOString(),
     }).where(eq(reminders.id, reminder.id));
     result.scheduled += 1;
+  }
+
+  return result;
+}
+
+export async function deliverDueLineReminders(now = new Date()): Promise<LineDeliveryResult> {
+  const db = getDb();
+  const dueReminders = await db.select().from(reminders)
+    .where(and(
+      eq(reminders.delivery, "LINE"),
+      eq(reminders.status, "scheduled"),
+      lte(reminders.scheduledFor, now.toISOString()),
+    ))
+    .limit(50);
+  const result: LineDeliveryResult = { checked: dueReminders.length, delivered: 0, failed: 0 };
+
+  for (const reminder of dueReminders) {
+    const delivery = await sendLineReminder({
+      lineUserId: reminder.recipientLineUserId,
+      topic: reminder.topic,
+      source: reminder.source,
+      primaryDate: reminder.primaryDate,
+      leadDays: reminder.leadDays,
+      locale: reminder.locale === "en" ? "en" : "zh",
+    });
+    if (!delivery.sent) {
+      await db.update(reminders).set({
+        status: "line_delivery_failed",
+        updatedAt: now.toISOString(),
+      }).where(eq(reminders.id, reminder.id));
+      result.failed += 1;
+      continue;
+    }
+
+    await db.update(reminders).set({
+      status: "delivered",
+      deliveredAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    }).where(eq(reminders.id, reminder.id));
+    result.delivered += 1;
   }
 
   return result;

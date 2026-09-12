@@ -1,9 +1,10 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { planReminderSchedule } from "../../reminder-schedule";
+import { planLineReminderSchedule, planReminderSchedule } from "../../reminder-schedule";
 import { cancelScheduledReminderEmail, scheduleReminderEmail, sendReminderConfirmation } from "../../resend-email";
+import { getLineConfiguration } from "../../line-messaging";
 import { ensureReminderSchema, getDb } from "../../../db";
-import { reminders } from "../../../db/schema";
+import { lineConnections, reminders } from "../../../db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +58,10 @@ export async function POST(request: Request) {
       })
       : [{ primaryDate: clean(payload.primaryDate, 10), leadDays: Number(payload.leadDays) }];
 
-    if (!topic || !source || !reminderFormat || delivery !== "Email") {
+    if (!topic || !source || !reminderFormat || !["Email", "LINE"].includes(delivery)) {
       return Response.json({ error: "Reminder details are incomplete." }, { status: 400 });
     }
-    if (!emailPattern.test(recipientEmail)) {
+    if (delivery === "Email" && !emailPattern.test(recipientEmail)) {
       return Response.json({ error: "Enter a valid email address." }, { status: 400 });
     }
     if (!reminderRules.length || reminderRules.some((rule) => !rule.primaryDate || !allowedLeadDays.has(rule.leadDays))) {
@@ -73,15 +74,29 @@ export async function POST(request: Request) {
 
     await ensureReminderSchema();
     const db = getDb();
+    const lineConfiguration = getLineConfiguration();
+    const personalLineUserId = lineConfiguration.personalConfigured && lineConfiguration.recipientEmail === user.email.toLowerCase()
+      ? lineConfiguration.recipientUserId
+      : "";
+    const [lineConnection] = delivery === "LINE" && !personalLineUserId
+      ? await db.select().from(lineConnections).where(eq(lineConnections.ownerId, user.userId)).limit(1)
+      : [];
+    const recipientLineUserId = personalLineUserId || lineConnection?.lineUserId || "";
+    if (delivery === "LINE" && !recipientLineUserId) {
+      return Response.json({ error: "Connect LINE before saving this reminder." }, { status: 409 });
+    }
     const results: Array<{ date: string; leadDays: number; scheduledFor: string; status: string }> = [];
 
     for (const rule of reminderRules) {
       const id = crypto.randomUUID();
-      const schedule = planReminderSchedule(rule.primaryDate, rule.leadDays);
+      const schedule = delivery === "LINE"
+        ? planLineReminderSchedule(rule.primaryDate, rule.leadDays)
+        : planReminderSchedule(rule.primaryDate, rule.leadDays);
       await db.insert(reminders).values({
         id,
         ownerId: user.userId,
-        recipientEmail,
+        recipientEmail: delivery === "Email" ? recipientEmail : user.email,
+        recipientLineUserId,
         topic,
         source,
         reminderFormat,
@@ -94,10 +109,12 @@ export async function POST(request: Request) {
       });
 
       const emailInput = { id, leadDays: rule.leadDays, locale, primaryDate: rule.primaryDate, recipientEmail, source, topic };
-      const scheduledEmail = schedule.status === "scheduled"
+      const scheduledEmail = delivery === "Email" && schedule.status === "scheduled"
         ? await scheduleReminderEmail(emailInput, schedule.scheduledAt)
         : { sent: false, providerId: "" };
-      const scheduledFor = scheduledEmail.sent && schedule.status === "scheduled" ? schedule.scheduledAt : "";
+      const scheduledFor = schedule.status === "scheduled" && (delivery === "LINE" || scheduledEmail.sent)
+        ? schedule.scheduledAt
+        : "";
       const status = scheduledFor
         ? "scheduled"
         : schedule.status === "outside-window"
@@ -115,16 +132,18 @@ export async function POST(request: Request) {
     }
 
     const first = reminderRules[0];
-    const confirmation = await sendReminderConfirmation({
-      id: groupId,
-      leadDays: first.leadDays,
-      locale,
-      primaryDate: first.primaryDate,
-      recipientEmail,
-      source,
-      topic,
-      dates: results.map((result) => ({ date: result.date, leadDays: result.leadDays, scheduledAt: result.scheduledFor })),
-    });
+    const confirmation = delivery === "Email"
+      ? await sendReminderConfirmation({
+        id: groupId,
+        leadDays: first.leadDays,
+        locale,
+        primaryDate: first.primaryDate,
+        recipientEmail,
+        source,
+        topic,
+        dates: results.map((result) => ({ date: result.date, leadDays: result.leadDays, scheduledAt: result.scheduledFor })),
+      })
+      : { sent: false };
     const scheduledItems = results.filter((result) => result.scheduledFor).map((result) => ({ date: result.date, scheduledFor: result.scheduledFor }));
     const status = scheduledItems.length === results.length
       ? "scheduled"
@@ -189,8 +208,21 @@ export async function PATCH(request: Request) {
       if (existing.status !== "paused") {
         return Response.json({ error: "Only paused reminders can be resumed." }, { status: 409 });
       }
-      const resumeSchedule = planReminderSchedule(existing.primaryDate, existing.leadDays);
-      const resumedEmail = resumeSchedule.status === "scheduled"
+      const lineConfiguration = getLineConfiguration();
+      const personalLineUserId = lineConfiguration.personalConfigured && lineConfiguration.recipientEmail === user.email.toLowerCase()
+        ? lineConfiguration.recipientUserId
+        : "";
+      const [currentLineConnection] = existing.delivery === "LINE" && !personalLineUserId
+        ? await db.select().from(lineConnections).where(eq(lineConnections.ownerId, user.userId)).limit(1)
+        : [];
+      const currentLineUserId = personalLineUserId || currentLineConnection?.lineUserId || "";
+      if (existing.delivery === "LINE" && !currentLineUserId) {
+        return Response.json({ error: "Reconnect LINE before resuming this reminder." }, { status: 409 });
+      }
+      const resumeSchedule = existing.delivery === "LINE"
+        ? planLineReminderSchedule(existing.primaryDate, existing.leadDays)
+        : planReminderSchedule(existing.primaryDate, existing.leadDays);
+      const resumedEmail = existing.delivery === "Email" && resumeSchedule.status === "scheduled"
         ? await scheduleReminderEmail({
           id: `${id}-resumed-${Date.now()}`,
           leadDays: existing.leadDays,
@@ -201,7 +233,9 @@ export async function PATCH(request: Request) {
           topic: existing.topic,
         }, resumeSchedule.scheduledAt)
         : { sent: false, providerId: "" };
-      const resumedFor = resumedEmail.sent && resumeSchedule.status === "scheduled" ? resumeSchedule.scheduledAt : "";
+      const resumedFor = resumeSchedule.status === "scheduled" && (existing.delivery === "LINE" || resumedEmail.sent)
+        ? resumeSchedule.scheduledAt
+        : "";
       const resumedStatus = resumedFor
         ? "scheduled"
         : resumeSchedule.status === "outside-window"
@@ -212,6 +246,7 @@ export async function PATCH(request: Request) {
       await db.update(reminders).set({
         scheduledFor: resumedFor,
         scheduledEmailId: resumedEmail.providerId ?? "",
+        recipientLineUserId: currentLineUserId || existing.recipientLineUserId,
         status: resumedStatus,
         updatedAt: new Date().toISOString(),
       }).where(and(eq(reminders.id, id), eq(reminders.ownerId, user.userId)));
@@ -234,8 +269,10 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const schedule = planReminderSchedule(primaryDate, leadDays);
-    const scheduledEmail = schedule.status === "scheduled"
+    const schedule = existing.delivery === "LINE"
+      ? planLineReminderSchedule(primaryDate, leadDays)
+      : planReminderSchedule(primaryDate, leadDays);
+    const scheduledEmail = existing.delivery === "Email" && schedule.status === "scheduled"
       ? await scheduleReminderEmail({
         id: `${id}-rescheduled-${Date.now()}`,
         leadDays,
@@ -246,7 +283,9 @@ export async function PATCH(request: Request) {
         topic: existing.topic,
       }, schedule.scheduledAt)
       : { sent: false, providerId: "" };
-    const scheduledFor = scheduledEmail.sent && schedule.status === "scheduled" ? schedule.scheduledAt : "";
+    const scheduledFor = schedule.status === "scheduled" && (existing.delivery === "LINE" || scheduledEmail.sent)
+      ? schedule.scheduledAt
+      : "";
     const status = scheduledFor
       ? "scheduled"
       : schedule.status === "outside-window"

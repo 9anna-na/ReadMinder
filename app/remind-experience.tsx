@@ -1,12 +1,13 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { DocumentReadError, extractDocumentText } from "./file-readers";
 import { analyzeReminderText, ReminderAnalysis, sampleReminderDocument } from "./reminder-analysis";
 
 type Locale = "zh" | "en";
 type Option = { label: string; icon: string; note?: string; available?: boolean };
 type DateRule = { date: string; leadDays: number };
+type LineStatus = { configured: boolean; connected: boolean; managedByAdmin: boolean; code: string; expiresAt: string; addFriendUrl: string };
 
 const content = {
   zh: {
@@ -17,7 +18,7 @@ const content = {
     features: [
       ["匯入支援的資料", "上傳 PDF、試算表、文件，或直接貼上含日期的文字。", "↗"],
       ["一次選好所有日期", "同一份文件可複選多個日期，分別設定提前天數。", "✦"],
-      ["送到習慣的地方", "現在先用 Email，未來也能接上 LINE 與行事曆。", "→"],
+      ["送到習慣的地方", "可選擇 Email 或 LINE，讓提醒主動來找你。", "→"],
     ],
     subtitle: "你的個人提醒建立助手", setup: "設定中", complete: "完成",
     hello: "嗨！我是 ReadMinder，你的文件提醒建立助手 👋",
@@ -30,7 +31,7 @@ const content = {
     orLink: "或貼上含日期的文字", useLink: "分析文字", later: "稍後再提供", laterValue: "稍後提供資料",
     pastedTextSource: "貼上的文字",
     ready: "你的提醒準備好了", readyCopy: "從現在開始，重要變化會主動來找你。",
-    summary: ["主題", "資料", "日期提醒", "傳送到"], activate: "儲存並設定 Email", restart: "再建立一個提醒",
+    summary: ["主題", "資料", "日期提醒", "傳送到"], activateEmail: "儲存並設定 Email", activateLine: "儲存並設定 LINE", restart: "再建立一個提醒",
     placeholder: "例如：合約快到期、待辦還沒完成……", send: "送出", user: "你",
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
     sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
@@ -40,10 +41,11 @@ const content = {
       "file-too-large": "檔案超過 10 MB，請縮小後再試一次。", unsupported: "目前不支援這個格式；舊版 .doc 請先另存成 .docx。",
       empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
     },
-    manualDate: "找不到想要的日期？手動加入", addDate: "加入日期", selectedDates: "已選日期與提醒時間", continue: "選好，繼續", dateHint: "每個日期都能設定不同的提前天數；Email 可自動排定未來 30 天內的提醒。", dateRequired: "請至少選擇一個提醒日期。",
+    manualDate: "找不到想要的日期？手動加入", addDate: "加入日期", selectedDates: "已選日期與提醒時間", continue: "選好，繼續", dateHint: "每個日期都能設定不同的提前天數。Email 可排定未來 30 天內的提醒；LINE 會在指定時間主動推播。", dateRequired: "請至少選擇一個提醒日期。",
     remindBefore: "提前多久提醒", days: "天", recipientEmail: "提醒要寄到哪個 Email？", emailPlaceholder: "you@example.com",
     emailConsent: "按下儲存即同意 ReadMinder 僅將此 Email 用於這筆提醒。", testMode: "測試模式目前只能寄到你註冊 Resend 的信箱。", saving: "正在安全儲存…", saved: "已儲存到雲端 ✓", sent: "確認信已寄出 ✓", scheduled: "自動提醒已排定 ✓",
-    scheduledNote: "已排定的自動提醒：", partialNote: "部分提醒已排定；其餘日期超過 30 天，目前只會保存、不會自動寄出。", reviewNote: "提醒已儲存，但所選日期目前無法自動排定；請選擇有效的未來日期。", waitingNote: "提醒已儲存，但寄送時間超過 30 天，目前尚未排程。", pendingNote: "提醒已保存，但確認信未寄出；測試模式請使用你註冊 Resend 的信箱。", saveError: "暫時無法儲存，請確認已登入後再試一次。",
+    scheduledNote: "已排定的自動提醒：", partialNote: "部分提醒已排定；其餘日期超過 30 天，目前只會保存、不會自動寄出。", reviewNote: "提醒已儲存，但所選日期目前無法自動排定；請選擇有效的未來日期。", waitingNote: "提醒已儲存，但寄送時間超過 30 天，目前尚未排程。", pendingNote: "提醒已保存，但確認信未寄出；測試模式請使用你註冊 Resend 的信箱。", saveError: "暫時無法儲存，請確認已登入、通知方式已連接後再試一次。",
+    lineTitle: "連接你的 LINE", lineDescription: "產生一組連結碼，再傳到 ReadMinder 官方帳號。連接完成後，提醒會直接送到這個聊天室。", lineCreateCode: "產生連結碼", lineOpen: "開啟 LINE", lineSend: "請在聊天室傳送：", lineRefresh: "我已傳送，重新檢查", lineDisconnect: "解除連接", lineConnected: "LINE 已成功連接", lineManaged: "目前使用網站管理者設定的 LINE 帳號。", lineNotConfigured: "LINE 通知尚未完成管理設定。", lineSignIn: "請先登入 ReadMinder，再連接 LINE。", lineError: "暫時無法確認 LINE 連接狀態，請稍後再試。", lineExpiry: "連結碼 15 分鐘內有效。",
   },
   en: {
     lang: "中文", langHref: "/", homeLabel: "ReadMinder home", login: "Log in", manage: "My reminders", manageHref: "/en/reminders",
@@ -53,7 +55,7 @@ const content = {
     features: [
       ["Import supported data", "Upload a PDF, spreadsheet, or document, or paste text that contains dates.", "↗"],
       ["Select every important date", "Track multiple dates from one document, each with its own lead time.", "✦"],
-      ["Delivered your way", "Start with email, with LINE and calendar support coming later.", "→"],
+      ["Delivered your way", "Choose email or LINE and receive reminders where you already spend time.", "→"],
     ],
     subtitle: "Your personal reminder builder", setup: "SETUP", complete: "COMPLETE",
     hello: "Hi there! I'm ReadMinder, your document-aware reminder builder. 👋",
@@ -66,7 +68,7 @@ const content = {
     orLink: "or paste text containing dates", useLink: "Analyse text", later: "I'll add it later", laterValue: "Add data later",
     pastedTextSource: "Pasted text",
     ready: "Your reminder is ready", readyCopy: "You're all set. Important changes will now come to you.",
-    summary: ["TOPIC", "SOURCE", "DATE REMINDERS", "DELIVERY"], activate: "Save and set up email", restart: "Build another reminder",
+    summary: ["TOPIC", "SOURCE", "DATE REMINDERS", "DELIVERY"], activateEmail: "Save and set up email", activateLine: "Save and set up LINE", restart: "Build another reminder",
     placeholder: "Type your message...", send: "Send", user: "You",
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
     sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
@@ -76,16 +78,17 @@ const content = {
       "file-too-large": "This file is over 10 MB. Please reduce its size and try again.", unsupported: "This format is not supported yet. Save legacy .doc files as .docx and try again.",
       empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
     },
-    manualDate: "Can't find the date? Add it manually", addDate: "Add date", selectedDates: "Selected dates and timing", continue: "Continue", dateHint: "Each date can have a different lead time. Email reminders can be scheduled up to 30 days ahead.", dateRequired: "Choose at least one reminder date.",
+    manualDate: "Can't find the date? Add it manually", addDate: "Add date", selectedDates: "Selected dates and timing", continue: "Continue", dateHint: "Each date can have a different lead time. Email can schedule up to 30 days ahead; LINE sends at the selected reminder time.", dateRequired: "Choose at least one reminder date.",
     remindBefore: "Remind me before", days: "days", recipientEmail: "Which email should receive the reminder?", emailPlaceholder: "you@example.com",
     emailConsent: "By saving, you agree that ReadMinder may use this email only for this reminder.", testMode: "Test mode can currently send only to the email registered with your Resend account.", saving: "Saving securely…", saved: "Saved to the cloud ✓", sent: "Confirmation sent ✓", scheduled: "Automatic reminder scheduled ✓",
-    scheduledNote: "Scheduled automatic reminders:", partialNote: "Some reminders are scheduled. Dates beyond 30 days are saved but will not be sent automatically yet.", reviewNote: "The reminders were saved, but the selected dates could not be scheduled. Choose valid future dates.", waitingNote: "The reminders are saved, but their send times are more than 30 days away and are not scheduled yet.", pendingNote: "Your reminders are saved, but confirmation could not be sent. In test mode, use your Resend account email.", saveError: "We couldn't save these reminders. Check that you're signed in and try again.",
+    scheduledNote: "Scheduled automatic reminders:", partialNote: "Some reminders are scheduled. Dates beyond 30 days are saved but will not be sent automatically yet.", reviewNote: "The reminders were saved, but the selected dates could not be scheduled. Choose valid future dates.", waitingNote: "The reminders are saved, but their send times are more than 30 days away and are not scheduled yet.", pendingNote: "Your reminders are saved, but confirmation could not be sent. In test mode, use your Resend account email.", saveError: "We couldn't save these reminders. Check that you're signed in and the selected delivery method is connected.",
+    lineTitle: "Connect your LINE", lineDescription: "Generate a link code and send it to the ReadMinder Official Account. Once connected, reminders will arrive in that chat.", lineCreateCode: "Generate link code", lineOpen: "Open LINE", lineSend: "Send this in the chat:", lineRefresh: "I sent it — check again", lineDisconnect: "Disconnect", lineConnected: "LINE is connected", lineManaged: "This site is using the administrator's configured LINE account.", lineNotConfigured: "LINE delivery still needs its administrator settings.", lineSignIn: "Sign in to ReadMinder before connecting LINE.", lineError: "We couldn't check your LINE connection. Try again shortly.", lineExpiry: "The code is valid for 15 minutes.",
   },
 } as const;
 
 const deliveries: Record<Locale, Option[]> = {
-  zh: [{ label: "Email", icon: "@", note: "目前可設定", available: true }, { label: "LINE", icon: "L", note: "即將開放" }, { label: "Google 日曆", icon: "31", note: "即將開放" }],
-  en: [{ label: "Email", icon: "@", note: "Available now", available: true }, { label: "LINE", icon: "L", note: "Coming soon" }, { label: "Google Calendar", icon: "31", note: "Coming soon" }],
+  zh: [{ label: "Email", icon: "@", note: "目前可設定", available: true }, { label: "LINE", icon: "L", note: "連接後即可使用", available: true }, { label: "Google 日曆", icon: "31", note: "即將開放" }],
+  en: [{ label: "Email", icon: "@", note: "Available now", available: true }, { label: "LINE", icon: "L", note: "Connect to use", available: true }, { label: "Google Calendar", icon: "31", note: "Coming soon" }],
 };
 
 export default function ReadMinderExperience({ locale = "zh" }: { locale?: Locale }) {
@@ -101,6 +104,9 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [lineStatus, setLineStatus] = useState<LineStatus | null>(null);
+  const [lineLoading, setLineLoading] = useState(false);
+  const [lineError, setLineError] = useState("");
   const [saved, setSaved] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [scheduleStatus, setScheduleStatus] = useState("");
@@ -109,6 +115,10 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   const [saveError, setSaveError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const progress = step >= 5 ? 100 : (step - 1) * 25;
+
+  useEffect(() => {
+    if (step === 5 && delivery === "LINE") void loadLineStatus();
+  }, [step, delivery]);
 
   function start() { setScreen("builder"); window.scrollTo({ top: 0 }); }
   function submitTopic(event: FormEvent) { event.preventDefault(); if (draft.trim()) { setTopic(draft.trim()); setStep(2); } }
@@ -161,15 +171,62 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
     applyAnalysis(analyzeReminderText(sample, fileName));
     setStep(3);
   }
+  async function loadLineStatus() {
+    setLineLoading(true);
+    setLineError("");
+    try {
+      const response = await fetch("/api/line/connect", { headers: { accept: "application/json" } });
+      if (response.status === 401) {
+        setLineError(t.lineSignIn);
+        return;
+      }
+      if (!response.ok) throw new Error("line status failed");
+      setLineStatus(await response.json() as LineStatus);
+    } catch {
+      setLineError(t.lineError);
+    } finally {
+      setLineLoading(false);
+    }
+  }
+  async function createLineCode() {
+    setLineLoading(true);
+    setLineError("");
+    try {
+      const response = await fetch("/api/line/connect", { method: "POST" });
+      if (response.status === 401) {
+        setLineError(t.lineSignIn);
+        return;
+      }
+      if (!response.ok) throw new Error("line code failed");
+      setLineStatus(await response.json() as LineStatus);
+    } catch {
+      setLineError(t.lineError);
+    } finally {
+      setLineLoading(false);
+    }
+  }
+  async function disconnectLine() {
+    setLineLoading(true);
+    setLineError("");
+    try {
+      const response = await fetch("/api/line/connect", { method: "DELETE" });
+      if (!response.ok) throw new Error("line disconnect failed");
+      await loadLineStatus();
+    } catch {
+      setLineError(t.lineError);
+      setLineLoading(false);
+    }
+  }
   async function saveReminder() {
-    if (!recipientEmail.trim()) return;
+    if (delivery === "Email" && !recipientEmail.trim()) return;
+    if (delivery === "LINE" && !lineStatus?.connected) return;
     setSaving(true);
     setSaveError("");
     try {
       const response = await fetch("/api/reminders", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topic, source, format: locale === "en" ? "Date reminders" : "日期提醒", delivery, reminders: dateRules, recipientEmail, analysis, locale }),
+        body: JSON.stringify({ topic, source, format: locale === "en" ? "Date reminders" : "日期提醒", delivery, reminders: dateRules, recipientEmail: delivery === "Email" ? recipientEmail : "", analysis, locale }),
       });
       if (!response.ok) throw new Error("save failed");
       const result = await response.json() as { reminder?: { confirmationSent?: boolean; scheduledItems?: Array<{ date: string; scheduledFor: string }>; status?: string } };
@@ -183,7 +240,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
       setSaving(false);
     }
   }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setPastedText(""); setDelivery(""); setAnalysis(null); setDateRules([]); setManualDate(""); setAnalysisError(""); setRecipientEmail(""); setSaved(false); setConfirmationSent(false); setScheduleStatus(""); setScheduledItems([]); setSaving(false); setSaveError(""); }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setPastedText(""); setDelivery(""); setAnalysis(null); setDateRules([]); setManualDate(""); setAnalysisError(""); setRecipientEmail(""); setLineStatus(null); setLineError(""); setSaved(false); setConfirmationSent(false); setScheduleStatus(""); setScheduledItems([]); setSaving(false); setSaveError(""); }
 
   const formatScheduledAt = (value: string) => new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(value));
   const dateSummary = locale === "en" ? `${dateRules.length} selected` : `已選 ${dateRules.length} 個日期`;
@@ -238,7 +295,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
           </div>
         </>}
         {step === 4 && <div className="f-choices f-deliveries">{deliveries[locale].map((item) => <button key={item.label} disabled={!item.available} onClick={() => { setDelivery(item.label); window.setTimeout(() => setStep(5), 180); }}><i>{item.icon}</i><span><b>{item.label}</b><small>{item.note}</small></span><em>{item.available ? "→" : "○"}</em></button>)}</div>}
-        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div><div className="f-final-rules">{dateRules.map((rule) => <div className="f-final-rule" key={rule.date}><span>{t.remindBefore}</span><b>{rule.date}</b><em>− {rule.leadDays} {t.days}</em></div>)}</div><div className="f-summary">{[topic, source, dateSummary, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div><label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small><small className="f-test-mode">◎ {t.testMode}</small></label><button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !dateRules.length || !recipientEmail.includes("@") || !recipientEmail.includes(".")} onClick={saveReminder}>{saved ? scheduledItems.length ? t.scheduled : confirmationSent ? t.sent : t.saved : saving ? t.saving : t.activate} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <div className="f-saved-note">{scheduledItems.length ? <><b>{scheduledItems.length < dateRules.length ? t.partialNote : t.scheduledNote}</b>{scheduledItems.map((item) => <span key={item.date}>{item.date} → {formatScheduledAt(item.scheduledFor)}</span>)}</> : scheduleStatus === "awaiting_schedule_window" ? t.waitingNote : confirmationSent ? t.reviewNote : t.pendingNote}</div>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
+        {step === 5 && <div className="f-ready"><span className="f-ready-spark">✦</span><div><small>ALL SET</small><h2>{t.ready}</h2><p>{t.readyCopy}</p></div><div className="f-final-rules">{dateRules.map((rule) => <div className="f-final-rule" key={rule.date}><span>{t.remindBefore}</span><b>{rule.date}</b><em>− {rule.leadDays} {t.days}</em></div>)}</div><div className="f-summary">{[topic, source, dateSummary, delivery].map((value, i) => <div key={t.summary[i]}><span>{t.summary[i]}</span><b>{value}</b></div>)}</div>{delivery === "Email" ? <label className="f-email-field"><span>{t.recipientEmail}</span><input type="email" autoComplete="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder={t.emailPlaceholder} disabled={saved} /><small>{t.emailConsent}</small><small className="f-test-mode">◎ {t.testMode}</small></label> : <section className={`f-line-connect ${lineStatus?.connected ? "is-connected" : ""}`}><div><span className="f-line-mark">L</span><div><b>{t.lineTitle}</b><p>{lineStatus?.connected ? lineStatus.managedByAdmin ? t.lineManaged : t.lineConnected : t.lineDescription}</p></div></div>{lineLoading ? <small>…</small> : !lineStatus?.configured ? <p className="f-line-warning">{lineStatus ? t.lineNotConfigured : lineError || t.lineError}</p> : lineStatus.connected ? <div className="f-line-connected"><strong>✓ {t.lineConnected}</strong>{!lineStatus.managedByAdmin && <button type="button" onClick={() => void disconnectLine()}>{t.lineDisconnect}</button>}</div> : lineStatus.code ? <div className="f-line-code"><span>{t.lineSend}</span><code>{lineStatus.code}</code><small>{t.lineExpiry}</small><div><a href={lineStatus.addFriendUrl} target="_blank" rel="noreferrer">{t.lineOpen}</a><button type="button" onClick={() => void loadLineStatus()}>{t.lineRefresh}</button></div></div> : <button type="button" className="f-line-create" onClick={() => void createLineCode()}>{t.lineCreateCode}</button>}{lineError && lineStatus && <p className="f-line-warning">{lineError}</p>}</section>}<button className={`f-activate ${saved ? "is-saved" : ""}`} disabled={saved || saving || !dateRules.length || (delivery === "Email" ? !recipientEmail.includes("@") || !recipientEmail.includes(".") : !lineStatus?.connected)} onClick={saveReminder}>{saved ? scheduledItems.length ? t.scheduled : confirmationSent ? t.sent : t.saved : saving ? t.saving : delivery === "LINE" ? t.activateLine : t.activateEmail} <span>{saved || saving ? "" : "→"}</span></button>{saveError && <p className="f-save-error" role="alert">! {saveError}</p>}{saved && <div className="f-saved-note">{scheduledItems.length ? <><b>{scheduledItems.length < dateRules.length ? t.partialNote : t.scheduledNote}</b>{scheduledItems.map((item) => <span key={item.date}>{item.date} → {formatScheduledAt(item.scheduledFor)}</span>)}</> : scheduleStatus === "awaiting_schedule_window" ? t.waitingNote : confirmationSent ? t.reviewNote : t.pendingNote}</div>}<button className="f-restart" onClick={reset}>← {t.restart}</button></div>}
       </div>
       {step === 1 && <form className="f-composer" onSubmit={submitTopic}><input aria-label={t.topicQuestion} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t.placeholder} /><button disabled={!draft.trim()}>{t.send} <span>→</span></button></form>}
     </section><Footer />

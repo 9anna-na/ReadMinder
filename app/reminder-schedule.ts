@@ -5,7 +5,7 @@ export type ReminderSchedule =
   | { status: "scheduled"; scheduledAt: string }
   | { status: "missing-date" | "invalid-date" | "past" | "outside-window"; scheduledAt: "" };
 
-export function planReminderSchedule(primaryDate: string, leadDays: number, now = new Date()): ReminderSchedule {
+function planSchedule(primaryDate: string, leadDays: number, now: Date): ReminderSchedule {
   if (!primaryDate) return { status: "missing-date", scheduledAt: "" };
 
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(primaryDate);
@@ -28,7 +28,18 @@ export function planReminderSchedule(primaryDate: string, leadDays: number, now 
   const scheduledAtMs = deadlineAtTaipeiNine - leadDays * DAY_MS;
   const delayMs = scheduledAtMs - now.getTime();
   if (delayMs <= 0) return { status: "past", scheduledAt: "" };
-  if (delayMs > MAX_SCHEDULE_DAYS * DAY_MS) return { status: "outside-window", scheduledAt: "" };
-
   return { status: "scheduled", scheduledAt: new Date(scheduledAtMs).toISOString() };
+}
+
+export function planReminderSchedule(primaryDate: string, leadDays: number, now = new Date()): ReminderSchedule {
+  const schedule = planSchedule(primaryDate, leadDays, now);
+  if (schedule.status !== "scheduled") return schedule;
+  if (Date.parse(schedule.scheduledAt) - now.getTime() > MAX_SCHEDULE_DAYS * DAY_MS) {
+    return { status: "outside-window", scheduledAt: "" };
+  }
+  return schedule;
+}
+
+export function planLineReminderSchedule(primaryDate: string, leadDays: number, now = new Date()): ReminderSchedule {
+  return planSchedule(primaryDate, leadDays, now);
 }

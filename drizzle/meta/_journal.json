@@ -15,6 +15,13 @@
       "when": 1787228725420,
       "tag": "0001_slimy_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789201865361,
+      "tag": "0002_many_sister_grimm",
+      "breakpoints": true
     }
   ]
 }
