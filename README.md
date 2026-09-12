@@ -22,7 +22,13 @@ Most reminder tools expect users to manually enter every date. ReadMinder explor
 - Reminder dashboard with filters, timing edits, pause/resume, and safe deletion
 - Sample contract for trying the complete flow without uploading a file
 
-Document analysis currently runs in the browser, so supported file contents are not uploaded to an external service.
+Document analysis currently runs in the browser, so supported file contents are not uploaded during analysis. When you save a reminder, the reminder details, selected dates, recipient email, and extracted analysis summary are stored in the site's Cloudflare database. Resend receives the information needed to send confirmation and reminder emails.
+
+## Deployment and authentication boundary
+
+ReadMinder is designed to run as an OpenAI Site. Its server routes trust the authenticated-user headers added by the Sites platform and reject requests when those headers are missing or malformed.
+
+Do not expose this app through another host or reverse proxy without adding an equivalent trusted authentication layer. On an independently hosted copy, a visitor could otherwise supply those headers themselves. Authentication and ownership checks are enforced on the server; browser controls are not treated as authorization.
 
 ## Current limitations
 
@@ -66,4 +72,4 @@ npm run build
 
 ## Project status
 
-ReadMinder is an early working MVP. The current release proves the flow from document input to extracted deadline signals and a saved reminder rule; scheduling and external notification delivery are the next milestones.
+ReadMinder is an early working MVP. The current release proves the flow from document input to extracted deadline signals, a saved reminder rule, and scheduled email delivery. Delivery history and additional channels are the next milestones.

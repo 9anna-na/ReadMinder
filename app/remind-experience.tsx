@@ -15,7 +15,7 @@ const content = {
     intro: "回答幾個問題、提供資料，ReadMinder 會讀懂文件中的重要日期，替你建立專屬提醒。",
     cta: "建立我的提醒", free: "免費 · 不需註冊",
     features: [
-      ["匯入任何來源", "PDF、試算表、文件，或直接貼上資料連結。", "↗"],
+      ["匯入支援的資料", "上傳 PDF、試算表、文件，或直接貼上含日期的文字。", "↗"],
       ["一次選好所有日期", "同一份文件可複選多個日期，分別設定提前天數。", "✦"],
       ["送到習慣的地方", "現在先用 Email，未來也能接上 LINE 與行事曆。", "→"],
     ],
@@ -23,11 +23,12 @@ const content = {
     hello: "嗨！我是 ReadMinder，你的文件提醒建立助手 👋",
     guide: "我會帶你快速完成設定，只要幾個步驟，提醒就準備好了。",
     topicQuestion: "你想針對什麼主題建立提醒？",
-    sourceQuestion: "收到！你有相關的文件或資料來源嗎？上傳檔案，或直接貼上連結就可以。",
+    sourceQuestion: "收到！你有相關的文件或資料嗎？上傳檔案，或直接貼上含日期的文字就可以。",
     formatQuestion: "我找到了幾個重要日期。請勾選要追蹤的日期，並分別設定提前多久提醒。",
     deliveryQuestion: "最後一題：提醒要傳送到哪裡？",
     sourcePrefix: "資料來源：", chooseData: "選擇文件或資料", fileTypes: "PDF、DOCX、Excel、CSV、TXT、JSON（最大 10 MB）",
-    orLink: "或貼上連結", useLink: "使用連結", later: "稍後再提供", laterValue: "稍後連接資料",
+    orLink: "或貼上含日期的文字", useLink: "分析文字", later: "稍後再提供", laterValue: "稍後提供資料",
+    pastedTextSource: "貼上的文字",
     ready: "你的提醒準備好了", readyCopy: "從現在開始，重要變化會主動來找你。",
     summary: ["主題", "資料", "日期提醒", "傳送到"], activate: "儲存並設定 Email", restart: "再建立一個提醒",
     placeholder: "例如：合約快到期、待辦還沒完成……", send: "送出", user: "你",
@@ -50,7 +51,7 @@ const content = {
     intro: "Answer a few questions, upload your data, and ReadMinder turns important dates into tailored reminders.",
     cta: "Build my reminder", free: "Free · No sign-up needed",
     features: [
-      ["Import any source", "Upload a PDF or spreadsheet, or simply paste a link.", "↗"],
+      ["Import supported data", "Upload a PDF, spreadsheet, or document, or paste text that contains dates.", "↗"],
       ["Select every important date", "Track multiple dates from one document, each with its own lead time.", "✦"],
       ["Delivered your way", "Start with email, with LINE and calendar support coming later.", "→"],
     ],
@@ -58,11 +59,12 @@ const content = {
     hello: "Hi there! I'm ReadMinder, your document-aware reminder builder. 👋",
     guide: "I'll guide you through a quick setup — a few steps and your reminders will be ready.",
     topicQuestion: "What's the topic you'd like to build reminders around?",
-    sourceQuestion: "Great. Do you have a document or data source? Upload a file or paste a link.",
+    sourceQuestion: "Great. Do you have a document or related text? Upload a file or paste text that contains dates.",
     formatQuestion: "I found several important dates. Select the ones to track and set a lead time for each.",
     deliveryQuestion: "One last question: where should we send your reminders?",
     sourcePrefix: "Source: ", chooseData: "Choose a document or data file", fileTypes: "PDF, DOCX, Excel, CSV, TXT, JSON (10 MB max)",
-    orLink: "or paste a link", useLink: "Use link", later: "I'll add it later", laterValue: "Connect data later",
+    orLink: "or paste text containing dates", useLink: "Analyse text", later: "I'll add it later", laterValue: "Add data later",
+    pastedTextSource: "Pasted text",
     ready: "Your reminder is ready", readyCopy: "You're all set. Important changes will now come to you.",
     summary: ["TOPIC", "SOURCE", "DATE REMINDERS", "DELIVERY"], activate: "Save and set up email", restart: "Build another reminder",
     placeholder: "Type your message...", send: "Send", user: "You",
@@ -91,7 +93,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   const [screen, setScreen] = useState<"landing" | "builder">("landing");
   const [step, setStep] = useState(1);
   const [topic, setTopic] = useState(""); const [draft, setDraft] = useState("");
-  const [source, setSource] = useState(""); const [link, setLink] = useState("");
+  const [source, setSource] = useState(""); const [pastedText, setPastedText] = useState("");
   const [delivery, setDelivery] = useState("");
   const [analysis, setAnalysis] = useState<ReminderAnalysis | null>(null);
   const [dateRules, setDateRules] = useState<DateRule[]>([]);
@@ -127,7 +129,13 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
   function updateLeadDays(date: string, leadDays: number) {
     setDateRules((current) => current.map((rule) => rule.date === date ? { ...rule, leadDays } : rule));
   }
-  function useLink() { if (link.trim()) { const nextAnalysis = analyzeReminderText(link.trim(), link.trim(), true); setSource(link.trim()); applyAnalysis(nextAnalysis); setStep(3); } }
+  function usePastedText() {
+    const text = pastedText.trim();
+    if (!text) return;
+    setSource(t.pastedTextSource);
+    applyAnalysis(analyzeReminderText(text, t.pastedTextSource));
+    setStep(3);
+  }
   async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -175,7 +183,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
       setSaving(false);
     }
   }
-  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setLink(""); setDelivery(""); setAnalysis(null); setDateRules([]); setManualDate(""); setAnalysisError(""); setRecipientEmail(""); setSaved(false); setConfirmationSent(false); setScheduleStatus(""); setScheduledItems([]); setSaving(false); setSaveError(""); }
+  function reset() { setStep(1); setTopic(""); setDraft(""); setSource(""); setPastedText(""); setDelivery(""); setAnalysis(null); setDateRules([]); setManualDate(""); setAnalysisError(""); setRecipientEmail(""); setSaved(false); setConfirmationSent(false); setScheduleStatus(""); setScheduledItems([]); setSaving(false); setSaveError(""); }
 
   const formatScheduledAt = (value: string) => new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-TW", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(value));
   const dateSummary = locale === "en" ? `${dateRules.length} selected` : `已選 ${dateRules.length} 個日期`;
@@ -212,7 +220,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
           <p className="f-local-note">◎ {t.localOnly}</p>
           {analysisError && <p className="f-upload-error" role="alert">! {analysisError}</p>}
           <button className="f-sample" onClick={useSample}>✦ {t.sample} →</button>
-          <div className="f-or"><span>{t.orLink}</span></div><div className="f-link"><input aria-label={t.orLink} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://docs.google.com/..." /><button disabled={!link.trim()} onClick={useLink}>{t.useLink} →</button></div><button className="f-skip" onClick={() => { setSource(t.laterValue); setAnalysis(null); setStep(3); }}>{t.later}</button>
+          <div className="f-or"><span>{t.orLink}</span></div><div className="f-link"><textarea aria-label={t.orLink} value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder={locale === "en" ? "Contract renewal deadline: 2026-09-30" : "例如：合約續約期限是 2026-09-30"} /><button disabled={!pastedText.trim()} onClick={usePastedText}>{t.useLink} →</button></div><button className="f-skip" onClick={() => { setSource(t.laterValue); setAnalysis(null); setStep(3); }}>{t.later}</button>
         </div>}
         {step === 3 && <>
           {analysis && <div className="f-analysis-card">
