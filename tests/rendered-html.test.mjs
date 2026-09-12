@@ -99,9 +99,10 @@ test("server-renders the bilingual reminder management routes", async () => {
 });
 
 test("keeps document parsing local and supports the advertised formats", async () => {
-  const [reader, experience, pdfModule, pdfWorker] = await Promise.all([
+  const [reader, experience, styles, pdfModule, pdfWorker] = await Promise.all([
     readFile(new URL("../app/file-readers.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/remind-experience.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/figma.css", import.meta.url), "utf8"),
     readFile(new URL("../public/vendor/pdfjs/pdf.min.mjs", import.meta.url)),
     readFile(new URL("../public/vendor/pdfjs/pdf.worker.min.mjs", import.meta.url)),
   ]);
@@ -118,6 +119,48 @@ test("keeps document parsing local and supports the advertised formats", async (
   assert.match(experience, /\.pdf,\.csv,\.xlsx,\.xls,\.docx,\.txt,\.json,\.md/);
   assert.match(experience, /paste text containing dates/);
   assert.doesNotMatch(experience, /paste a link|貼上連結|docs\.google\.com/);
+  assert.match(styles, /\.f-message\.f-user p\s*\{\s*color:#fff;\s*\}/);
+});
+
+test("preserves PDF rows and finds dates in week-based course timelines", async () => {
+  const [{ joinPdfTextItems }, { analyzeReminderText }] = await Promise.all([
+    import("../app/file-readers.ts"),
+    import("../app/reminder-analysis.ts"),
+  ]);
+  const text = joinPdfTextItems([
+    { str: "W1 (9/7)", transform: [1, 0, 0, 1, 20, 700] },
+    { str: "Course introduction", transform: [1, 0, 0, 1, 120, 700], hasEOL: true },
+    { str: "W3", transform: [1, 0, 0, 1, 20, 680] },
+    { str: "Submit HW1", transform: [1, 0, 0, 1, 120, 680], hasEOL: true },
+    { str: "W4", transform: [1, 0, 0, 1, 20, 670] },
+    { str: "Prediction: Random Forest Case: Presentation by Group X", transform: [1, 0, 0, 1, 120, 670], hasEOL: true },
+    { str: "W5 (10/5)", transform: [1, 0, 0, 1, 20, 660] },
+    { str: "Upload Proposal", transform: [1, 0, 0, 1, 120, 660], hasEOL: true },
+    { str: "W14 (12/7)", transform: [1, 0, 0, 1, 20, 640] },
+    { str: "Upload Poster Draft", transform: [1, 0, 0, 1, 120, 640], hasEOL: true },
+  ]);
+
+  assert.match(text, /W3 Submit HW1/);
+  assert.match(text, /W5 \(10\/5\) Upload Proposal/);
+  const analysis = analyzeReminderText(
+    text,
+    "ECON 5166 Timeline - For Students.pdf",
+    false,
+    new Date("2026-09-12T00:00:00.000Z"),
+  );
+  assert.equal(analysis.primaryDate, "2026-09-21");
+  assert.deepEqual(
+    analysis.signals.filter((signal) => signal.context.includes("Submit HW1"))[0],
+    {
+      date: "2026-09-21",
+      rawDate: "W3",
+      context: "W3 Submit HW1",
+      inferred: true,
+    },
+  );
+  assert.ok(analysis.signals.some((signal) => signal.date === "2026-10-05" && !signal.inferred));
+  assert.ok(analysis.signals.some((signal) => signal.date === "2026-12-07" && !signal.inferred));
+  assert.ok(!analysis.signals.some((signal) => signal.date === "2026-09-28"));
 });
 
 test("sends confirmation email through a server-side secret", async () => {

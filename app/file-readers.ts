@@ -34,6 +34,41 @@ function finish(text: string, format: string, limited = false): ExtractedDocumen
   return { text: cleaned, format, limited: limited || text.length > MAX_TEXT_CHARACTERS };
 }
 
+type PdfTextItem = {
+  hasEOL?: boolean;
+  str?: string;
+  transform?: number[];
+};
+
+export function joinPdfTextItems(items: readonly unknown[]) {
+  const lines: string[] = [];
+  let line = "";
+  let previousY: number | null = null;
+
+  const flushLine = () => {
+    const cleaned = line.replace(/\s+/g, " ").trim();
+    if (cleaned) lines.push(cleaned);
+    line = "";
+  };
+
+  for (const value of items) {
+    if (!value || typeof value !== "object") continue;
+    const item = value as PdfTextItem;
+    if (typeof item.str !== "string") continue;
+
+    const y = Array.isArray(item.transform) && typeof item.transform[5] === "number"
+      ? item.transform[5]
+      : null;
+    if (previousY !== null && y !== null && Math.abs(y - previousY) > 2) flushLine();
+    if (item.str.trim()) line += `${line ? " " : ""}${item.str}`;
+    if (item.hasEOL) flushLine();
+    if (y !== null) previousY = y;
+  }
+
+  flushLine();
+  return lines.join("\n");
+}
+
 async function readPdf(file: File) {
   const pdfModuleUrl = new URL(PDF_MODULE_URL, globalThis.location.href).href;
   const pdfWorkerUrl = new URL(PDF_WORKER_URL, globalThis.location.href).href;
@@ -48,7 +83,7 @@ async function readPdf(file: File) {
     for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent();
-      pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+      pages.push(joinPdfTextItems(content.items));
     }
 
     return finish(pages.join("\n"), "PDF", document.numPages > MAX_PDF_PAGES);

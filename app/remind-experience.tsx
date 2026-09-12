@@ -35,7 +35,7 @@ const content = {
     loginSoon: "登入功能即將開放", prototype: "這是互動原型：下一版會在這裡連接帳號並啟用提醒。",
     sample: "試用範例合約", localOnly: "目前在你的瀏覽器內分析，不會上傳文件內容。",
     analysisTitle: "ReadMinder 讀到這些期限線索", datesFound: "可複選要提醒的日期", keywordsFound: "期限關鍵字",
-    noDate: "目前沒有找到明確日期，請在下方手動選擇。", limited: "文件很長，ReadMinder 已分析前段內容。建議確認下方日期是否完整。",
+    noDate: "檔案已成功讀取，但沒有找到可直接建立提醒的日期。若課綱把日期放在另一份時程表，請改上傳時程表；也可以在下方手動加入。", inferredDate: "依週次推算，請確認年份", limited: "文件很長，ReadMinder 已分析前段內容。建議確認下方日期是否完整。",
     analyzing: "正在讀取文件…", readErrors: {
       "file-too-large": "檔案超過 10 MB，請縮小後再試一次。", unsupported: "目前不支援這個格式；舊版 .doc 請先另存成 .docx。",
       empty: "沒有讀到文字。若是掃描型 PDF，下一版加入 OCR 後才能辨識。", encrypted: "目前無法讀取有密碼的 PDF。", "read-failed": "文件讀取失敗，請確認檔案沒有損毀後再試一次。",
@@ -71,7 +71,7 @@ const content = {
     loginSoon: "Login is coming soon", prototype: "This is an interactive prototype. Account connection will be added next.",
     sample: "Try a sample contract", localOnly: "For now, analysis happens in your browser. The document is not uploaded.",
     analysisTitle: "ReadMinder found these deadline signals", datesFound: "Select one or more dates", keywordsFound: "Deadline keywords",
-    noDate: "No explicit date was found. Choose one manually below.", limited: "This is a long document, so ReadMinder analysed its first section. Check that the dates below are complete.",
+    noDate: "The file was read successfully, but it does not contain a date that can be used directly. If the syllabus links to a separate timeline, upload that file instead, or add a date below.", inferredDate: "Inferred from the week number — check the year", limited: "This is a long document, so ReadMinder analysed its first section. Check that the dates below are complete.",
     analyzing: "Reading document…", readErrors: {
       "file-too-large": "This file is over 10 MB. Please reduce its size and try again.", unsupported: "This format is not supported yet. Save legacy .doc files as .docx and try again.",
       empty: "No text was found. Scanned PDFs will need OCR support in a future version.", encrypted: "Password-protected PDFs cannot be read yet.", "read-failed": "The document could not be read. Check that it is not damaged and try again.",
@@ -226,7 +226,7 @@ export default function ReadMinderExperience({ locale = "zh" }: { locale?: Local
           {analysis && <div className="f-analysis-card">
             <div className="f-analysis-head"><span>✦</span><div><small>DOCUMENT ANALYSIS</small><h3>{t.analysisTitle}</h3></div></div>
             {analysis.limited && <p className="f-analysis-warning">{t.limited}</p>}
-            {analysis.signals.length ? <div className="f-signal-list"><span>{t.datesFound}</span>{analysis.signals.slice(0, 6).map((signal) => { const selected = dateRules.some((rule) => rule.date === signal.date); return <button type="button" className={selected ? "is-selected" : ""} aria-pressed={selected} onClick={() => toggleDate(signal.date)} key={`${signal.date}-${signal.rawDate}`}><b>{signal.date}</b><p>{signal.context}</p><i>{selected ? "✓" : "+"}</i></button>; })}</div> : <p className="f-analysis-empty">{t.noDate}</p>}
+            {analysis.signals.length ? <div className="f-signal-list"><span>{t.datesFound}</span>{analysis.signals.map((signal) => { const selected = dateRules.some((rule) => rule.date === signal.date); return <button type="button" className={selected ? "is-selected" : ""} aria-pressed={selected} onClick={() => toggleDate(signal.date)} key={`${signal.date}-${signal.rawDate}`}><b>{signal.date}</b><p>{signal.context}{signal.inferred && <small> · {t.inferredDate}</small>}</p><i>{selected ? "✓" : "+"}</i></button>; })}</div> : <p className="f-analysis-empty">{t.noDate}</p>}
             {!!analysis.keywords.length && <div className="f-keywords"><span>{t.keywordsFound}</span><div>{analysis.keywords.map((keyword) => <b key={keyword}>{keyword}</b>)}</div></div>}
           </div>}
           <div className="f-date-settings">
